@@ -25,10 +25,10 @@ func declareCommonExchanges(ch *amqp.Channel) error {
 	if err := ch.ExchangeDeclare(exchangeWaEvents, "topic", true, false, false, false, nil); err != nil {
 		return fmt.Errorf("rmq: declare %s: %w", exchangeWaEvents, err)
 	}
-	if err := ch.ExchangeDeclare(exchangeWaCommands, "direct", true, false, false, false, nil); err != nil {
+	if err := ch.ExchangeDeclare(exchangeWaCommands, "topic", true, false, false, false, nil); err != nil {
 		return fmt.Errorf("rmq: declare %s: %w", exchangeWaCommands, err)
 	}
-	if err := ch.ExchangeDeclare(exchangeWaRPC, "direct", true, false, false, false, nil); err != nil {
+	if err := ch.ExchangeDeclare(exchangeWaRPC, "topic", true, false, false, false, nil); err != nil {
 		return fmt.Errorf("rmq: declare %s: %w", exchangeWaRPC, err)
 	}
 	return nil
