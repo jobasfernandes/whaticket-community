@@ -1,0 +1,149 @@
+name: Repository maintenance
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+concurrency:
+  group: whaticket-maintenance
+  cancel-in-progress: false
+
+jobs:
+  prune-ghcr-images:
+    name: Prune GHCR images (keep latest, develop + 5 newest tags)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prune old container images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG: ${{ github.repository_owner }}
+          KEEP_TAGS: 5
+        run: |
+          set -euo pipefail
+
+          resolve_owner_scope() {
+            local owner="$1"
+            if gh api -H "Accept: application/vnd.github+json" "/orgs/${owner}" >/dev/null 2>&1; then
+              echo "orgs"
+            else
+              echo "users"
+            fi
+          }
+
+          prune_package() {
+            local package_name="$1"
+            echo "📦 Pruning: $package_name"
+
+            local scope
+            scope=$(resolve_owner_scope "$ORG")
+            local api_base="/${scope}/${ORG}/packages/container/${package_name}"
+
+            if ! gh api -H "Accept: application/vnd.github+json" \
+              "${api_base}/versions?per_page=1&page=1" >/dev/null 2>&1; then
+              echo "  Package not found. Skipping."
+              return 0
+            fi
+
+            local all_versions="[]"
+            local page=1
+            while [ $page -le 50 ]; do
+              resp=$(gh api -H "Accept: application/vnd.github+json" \
+                "${api_base}/versions?per_page=100&page=$page" 2>/dev/null || echo "[]")
+              if ! echo "$resp" | jq -e 'type == "array"' >/dev/null 2>&1; then break; fi
+              count=$(echo "$resp" | jq 'length')
+              if [ "$count" -eq 0 ]; then break; fi
+              all_versions=$(echo "$all_versions $resp" | jq -s 'add')
+              page=$((page+1))
+            done
+
+            local total
+            total=$(echo "$all_versions" | jq 'length')
+            echo "  Found $total versions total"
+
+            local protected_vtags
+            protected_vtags=$(echo "$all_versions" | jq -r --argjson keep "$KEEP_TAGS" '
+              [ .[] | select(.metadata.container.tags | length > 0) |
+                {id: .id, tags: .metadata.container.tags, created: .created_at} |
+                select(.tags | any(startswith("v")))
+              ] | sort_by(.created) | reverse | .[:$keep] | .[].id
+            ')
+
+            echo "$all_versions" | jq -r '.[] | [.id, ((.metadata.container.tags // []) | join(",")), .created_at] | @tsv' \
+              | while IFS=$'\t' read -r id tags created; do
+                  if echo ",$tags," | grep -qE ',(latest|develop),'; then
+                    echo "  ✅ Keep (pinned): id=$id tags=[$tags]"
+                    continue
+                  fi
+                  if echo "$protected_vtags" | grep -qw "$id"; then
+                    echo "  ✅ Keep (recent): id=$id tags=[$tags]"
+                    continue
+                  fi
+                  echo "  🗑️  Delete: id=$id tags=[$tags] created=$created"
+                  gh api --method DELETE -H "Accept: application/vnd.github+json" \
+                    "${api_base}/versions/$id" 2>/dev/null || true
+                done
+
+            echo "  Done."
+          }
+
+          echo "🧹 Starting GHCR cleanup..."
+          for pkg in whaticket-backend whaticket-worker whaticket-frontend; do
+            prune_package "$pkg"
+            echo ""
+          done
+          echo "✅ Image cleanup completed!"
+
+  cleanup-actions-cache:
+    name: Cleanup old Actions caches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep only newest caches per scope
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP_PER_SCOPE: 5
+        run: |
+          set -euo pipefail
+
+          all_caches="[]"
+          page=1
+          while :; do
+            resp=$(gh api -H "Accept: application/vnd.github+json" \
+              "/repos/$REPO/actions/caches?per_page=100&page=$page&sort=last_accessed_at&direction=desc" \
+              2>/dev/null || echo '{"actions_caches":[]}')
+            count=$(echo "$resp" | jq '.actions_caches | length')
+            if [ "$count" -eq 0 ]; then break; fi
+            all_caches=$(echo "$all_caches" "$(echo "$resp" | jq '.actions_caches')" | jq -s 'add')
+            page=$((page+1))
+          done
+
+          total=$(echo "$all_caches" | jq 'length')
+          echo "  Found $total caches total"
+
+          echo "$all_caches" | jq -r --argjson keep "$KEEP_PER_SCOPE" '
+            group_by(.key | split("-") | first) |
+            .[] |
+            sort_by(.last_accessed_at) | reverse |
+            .[$keep:][] |
+            [.id, .key, .last_accessed_at] | @tsv
+          ' | while IFS=$'\t' read -r id key last_used; do
+            echo "  🗑️  Deleting cache: $key (last used: $last_used)"
+            gh api --method DELETE \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$REPO/actions/caches/$id" 2>/dev/null || true
+          done
+
+          echo "✅ Cache cleanup completed!"

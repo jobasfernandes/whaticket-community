@@ -1,0 +1,40 @@
+name: Build worker
+
+on:
+  pull_request:
+    paths:
+      - "worker/**"
+      - ".github/workflows/build-worker.yaml"
+  push:
+    branches: [develop]
+    paths:
+      - "worker/**"
+      - ".github/workflows/build-worker.yaml"
+
+concurrency:
+  group: build-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: go build + vet
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: worker/go.mod
+          cache: true
+          cache-dependency-path: worker/go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build -trimpath ./cmd/worker

@@ -1,6 +1,9 @@
+*_test.go
+testdata/
 .git
-*Dockerfile*
-*docker-compose*
-node_modules
-dist
-.wwebjs_auth
+.gitignore
+.env
+.env.*
+*.md
+.vscode
+.idea
