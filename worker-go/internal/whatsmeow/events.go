@@ -8,6 +8,7 @@ import (
 
 	"go.mau.fi/whatsmeow/appstate"
 	"go.mau.fi/whatsmeow/proto/waE2E"
+	"go.mau.fi/whatsmeow/proto/waHistorySync"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 
@@ -114,8 +115,7 @@ func (h *EventHandler) dispatch(connID int, rawEvt any) {
 		}
 
 	case *events.HistorySync:
-		summary := historySyncSummary(evt)
-		h.publish(ctx, connID, typeName, map[string]any{"summary": summary})
+		h.publish(ctx, connID, typeName, buildHistorySyncPayload(evt))
 
 	case *events.PairSuccess,
 		*events.Connected,
@@ -231,19 +231,36 @@ func receiptStateLabel(rt types.ReceiptType) string {
 	}
 }
 
-func historySyncSummary(evt *events.HistorySync) map[string]int {
-	summary := map[string]int{"conversations": 0, "messages": 0}
+func buildHistorySyncPayload(evt *events.HistorySync) map[string]any {
+	payload := map[string]any{
+		"syncType":      "",
+		"progress":      float32(0),
+		"conversations": 0,
+		"totalMessages": 0,
+		"event":         evt,
+	}
 	if evt == nil || evt.Data == nil {
-		return summary
+		return payload
+	}
+	payload["syncType"] = evt.Data.GetSyncType().String()
+	if p := evt.Data.GetProgress(); p > 0 {
+		payload["progress"] = float32(p) / 100
 	}
 	conversations := evt.Data.GetConversations()
-	summary["conversations"] = len(conversations)
-	totalMessages := 0
+	payload["conversations"] = len(conversations)
+	payload["totalMessages"] = countHistoryMessages(conversations)
+	return payload
+}
+
+func countHistoryMessages(conversations []*waHistorySync.Conversation) int {
+	total := 0
 	for _, c := range conversations {
-		totalMessages += len(c.GetMessages())
+		if c == nil {
+			continue
+		}
+		total += len(c.GetMessages())
 	}
-	summary["messages"] = totalMessages
-	return summary
+	return total
 }
 
 func extractBody(msg *waE2E.Message) string {

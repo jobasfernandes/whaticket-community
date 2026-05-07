@@ -3,10 +3,13 @@ module github.com/jobasfernandes/whaticket-go-worker
 go 1.25.4
 
 require (
+	github.com/HugoSmits86/nativewebp v1.2.1
 	github.com/google/uuid v1.6.0
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/rabbitmq/amqp091-go v1.11.0
 	go.mau.fi/whatsmeow v0.0.0-20260506122147-6a7198d94d26
+	golang.org/x/image v0.39.0
+	golang.org/x/net v0.53.0
 	google.golang.org/protobuf v1.36.11
 	modernc.org/sqlite v1.50.0
 )
@@ -40,7 +43,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
-	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect

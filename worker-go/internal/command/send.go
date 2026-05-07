@@ -5,17 +5,21 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/types"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/jobasfernandes/whaticket-go-worker/internal/linkpreview"
 	"github.com/jobasfernandes/whaticket-go-worker/internal/media"
 	apperrors "github.com/jobasfernandes/whaticket-go-worker/internal/platform/errors"
 	"github.com/jobasfernandes/whaticket-go-worker/internal/rmq"
 	whatsmeowpkg "github.com/jobasfernandes/whaticket-go-worker/internal/whatsmeow"
 )
+
+const linkPreviewTimeout = 5 * time.Second
 
 const maxOutboundMediaBytes = 16 << 20
 
@@ -85,13 +89,30 @@ func (h *Handlers) handleSendText(ctx context.Context, env rmq.Envelope) (any, e
 		return nil, err
 	}
 	msgID := sess.Client.GenerateMessageID()
-	msg := &waE2E.Message{ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+	extended := &waE2E.ExtendedTextMessage{
 		Text: proto.String(req.Body),
-	}}
-	if ctxInfo := buildContextInfo(req.ContextInfo); ctxInfo != nil {
-		msg.ExtendedTextMessage.ContextInfo = ctxInfo
 	}
+	attachLinkPreview(ctx, extended, req.Body)
+	if ctxInfo := buildContextInfo(req.ContextInfo); ctxInfo != nil {
+		extended.ContextInfo = ctxInfo
+	}
+	msg := &waE2E.Message{ExtendedTextMessage: extended}
 	return h.sendMessage(ctx, sess, recipient, msg, msgID)
+}
+
+func attachLinkPreview(ctx context.Context, extended *waE2E.ExtendedTextMessage, body string) {
+	preview, ok := linkpreview.Extract(ctx, body, linkPreviewTimeout)
+	if !ok || preview == nil {
+		return
+	}
+	extended.MatchedText = proto.String(preview.URL)
+	extended.Title = proto.String(preview.Title)
+	if preview.Description != "" {
+		extended.Description = proto.String(preview.Description)
+	}
+	if len(preview.Thumbnail) > 0 {
+		extended.JPEGThumbnail = preview.Thumbnail
+	}
 }
 
 func (h *Handlers) handleSendImage(ctx context.Context, env rmq.Envelope) (any, error) {
@@ -287,11 +308,15 @@ func (h *Handlers) handleSendSticker(ctx context.Context, env rmq.Envelope) (any
 	if err != nil {
 		return nil, err
 	}
-	data, _, err := media.DecodeDataURLOrFetch(ctx, req.Sticker, maxOutboundMediaBytes)
+	rawBytes, _, err := media.DecodeDataURLOrFetch(ctx, req.Sticker, maxOutboundMediaBytes)
 	if err != nil {
 		return nil, err
 	}
-	uploaded, err := media.UploadOutbound(ctx, sess.Client, data, whatsmeow.MediaImage)
+	stickerBytes, _, animated, err := media.ConvertToSticker(rawBytes)
+	if err != nil {
+		return nil, apperrors.Wrap(err, apperrors.ErrMediaDecode, http.StatusBadRequest)
+	}
+	uploaded, err := media.UploadOutbound(ctx, sess.Client, stickerBytes, whatsmeow.MediaImage)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +329,10 @@ func (h *Handlers) handleSendSticker(ctx context.Context, env rmq.Envelope) (any
 		Mimetype:      proto.String(stickerMime),
 		FileEncSHA256: uploaded.FileEncSHA256,
 		FileSHA256:    uploaded.FileSHA256,
-		FileLength:    proto.Uint64(uint64(len(data))),
+		FileLength:    proto.Uint64(uint64(len(stickerBytes))),
+	}
+	if animated {
+		stickerMsg.IsAnimated = proto.Bool(true)
 	}
 	return h.sendMessage(ctx, sess, recipient, &waE2E.Message{StickerMessage: stickerMsg}, msgID)
 }
