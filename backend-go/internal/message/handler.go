@@ -68,7 +68,7 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) error {
 func (h *Handler) delete(w http.ResponseWriter, r *http.Request) error {
 	messageID := chi.URLParam(r, "messageId")
 	if messageID == "" {
-		return errors.New(errBadRequest, http.StatusBadRequest)
+		return errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
 	}
 	actor := claimsPointer(r)
 	if actor == nil {
@@ -85,7 +85,7 @@ func parseTicketID(r *http.Request) (uint, *errors.AppError) {
 	raw := chi.URLParam(r, "ticketId")
 	parsed, err := strconv.ParseUint(raw, 10, 64)
 	if err != nil || parsed == 0 {
-		return 0, errors.New(errBadRequest, http.StatusBadRequest)
+		return 0, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
 	}
 	return uint(parsed), nil
 }

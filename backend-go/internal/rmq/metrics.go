@@ -1,6 +1,7 @@
 package rmq
 
 import (
+	"context"
 	"log/slog"
 	"time"
 )
@@ -37,7 +38,7 @@ func (c *Client) recordStateTransition(from, to int32) {
 
 func (c *Client) recordReconnectAttempt(attempt int, delay time.Duration, err error) {
 	level := slog.LevelWarn
-	c.logger().Log(nil, level, "rmq reconnect attempt",
+	c.logger().Log(context.Background(), level, "rmq reconnect attempt",
 		slog.Int("attempt", attempt),
 		slog.Duration("delay", delay),
 		slog.Any("err", err),
@@ -55,7 +56,7 @@ func (c *Client) recordPublish(exchange, routingKey, outcome string, duration ti
 	if outcome != outcomeOK {
 		level = slog.LevelWarn
 	}
-	c.logger().Log(nil, level, "rmq publish",
+	c.logger().Log(context.Background(), level, "rmq publish",
 		slog.String("exchange", exchange),
 		slog.String("routing_key", routingKey),
 		slog.String("outcome", outcome),
@@ -72,7 +73,7 @@ func (c *Client) recordConsume(queue, routingKey, outcome string, duration time.
 	case outcomePanic:
 		level = slog.LevelError
 	}
-	c.logger().Log(nil, level, "rmq consume",
+	c.logger().Log(context.Background(), level, "rmq consume",
 		slog.String("queue", queue),
 		slog.String("routing_key", routingKey),
 		slog.String("outcome", outcome),
@@ -86,7 +87,7 @@ func (c *Client) recordRPC(routingKey, outcome string, duration time.Duration, e
 	if outcome != outcomeOK {
 		level = slog.LevelWarn
 	}
-	c.logger().Log(nil, level, "rmq rpc call",
+	c.logger().Log(context.Background(), level, "rmq rpc call",
 		slog.String("routing_key", routingKey),
 		slog.String("outcome", outcome),
 		slog.Int64("duration_ms", duration.Milliseconds()),

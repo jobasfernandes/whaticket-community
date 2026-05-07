@@ -15,7 +15,7 @@ import (
 const (
 	queueDebounceInterval = 3 * time.Second
 	rpcSendTimeout        = 10 * time.Second
-	lrmPrefix             = "‎"
+	lrmPrefix             = "\u200e"
 	whatsappUserSuffix    = "@s.whatsapp.net"
 	groupSuffix           = "@g.us"
 )
