@@ -38,6 +38,13 @@ func NewHub(cfg Config) *Hub {
 	}
 }
 
+func (h *Hub) SetTicketAuthorizer(authz TicketAuthorizer) {
+	if authz == nil {
+		authz = NoopTicketAuthorizer{}
+	}
+	h.cfg.TicketAuthz = authz
+}
+
 func (h *Hub) registerClient(c *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

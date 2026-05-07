@@ -14,6 +14,10 @@ type AuthLoader struct {
 	DB *gorm.DB
 }
 
+func NewAuthLoader(db *gorm.DB) *AuthLoader {
+	return &AuthLoader{DB: db}
+}
+
 func (a *AuthLoader) FindByEmail(ctx context.Context, db *gorm.DB, email string) (*auth.UserRecord, error) {
 	var u User
 	if err := db.WithContext(ctx).Where("email = ?", email).First(&u).Error; err != nil {

@@ -60,6 +60,36 @@ func (d *Deps) Update(ctx context.Context, key, value string) (*Setting, *errors
 	return &s, nil
 }
 
+type Checker struct {
+	db *gorm.DB
+}
+
+func NewSettingChecker(db *gorm.DB) *Checker {
+	return &Checker{db: db}
+}
+
+func (c *Checker) Check(ctx context.Context, db *gorm.DB, key string) (string, *errors.AppError) {
+	target := db
+	if target == nil {
+		target = c.db
+	}
+	return Check(ctx, target, key)
+}
+
+func (c *Checker) FindAPIToken(ctx context.Context, db *gorm.DB, token string) (bool, error) {
+	target := db
+	if target == nil {
+		target = c.db
+	}
+	if _, appErr := FindByValue(ctx, target, token); appErr != nil {
+		if appErr.Code == "ERR_NO_SETTING_FOUND" {
+			return false, nil
+		}
+		return false, appErr
+	}
+	return true, nil
+}
+
 func Check(ctx context.Context, db *gorm.DB, key string) (string, *errors.AppError) {
 	var s Setting
 	if err := db.WithContext(ctx).First(&s, "key = ?", key).Error; err != nil {

@@ -254,6 +254,50 @@ func (d *Deps) publish(channel, event string, data any) {
 	d.WS.Publish(channel, event, data)
 }
 
+func (d *Deps) UpdateStatus(ctx context.Context, id uint, status, qrcode string) *errors.AppError {
+	updates := map[string]any{"status": status, "qrcode": qrcode}
+	if err := d.DB.WithContext(ctx).Model(&Whatsapp{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return errors.Wrap(err, "ERR_DB_UPDATE", http.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (d *Deps) UpdateConnected(ctx context.Context, id uint) *errors.AppError {
+	updates := map[string]any{
+		"status":  StatusConnected,
+		"qrcode":  "",
+		"retries": 0,
+	}
+	if err := d.DB.WithContext(ctx).Model(&Whatsapp{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return errors.Wrap(err, "ERR_DB_UPDATE", http.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (d *Deps) UpdateRetries(ctx context.Context, id uint) *errors.AppError {
+	if err := d.DB.WithContext(ctx).Model(&Whatsapp{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"status":  StatusOpening,
+			"retries": gorm.Expr("retries + 1"),
+		}).Error; err != nil {
+		return errors.Wrap(err, "ERR_DB_UPDATE", http.StatusInternalServerError)
+	}
+	return nil
+}
+
+func (d *Deps) UpdateDisconnected(ctx context.Context, id uint) *errors.AppError {
+	updates := map[string]any{
+		"status":  StatusDisconnected,
+		"qrcode":  "",
+		"session": gorm.Expr("NULL"),
+	}
+	if err := d.DB.WithContext(ctx).Model(&Whatsapp{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return errors.Wrap(err, "ERR_DB_UPDATE", http.StatusInternalServerError)
+	}
+	return nil
+}
+
 func Get(ctx context.Context, db *gorm.DB, id uint) (*Whatsapp, *errors.AppError) {
 	var w Whatsapp
 	err := db.WithContext(ctx).
