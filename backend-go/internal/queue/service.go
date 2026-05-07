@@ -16,6 +16,9 @@ const (
 	wsEventCreated      = "queue.created"
 	wsEventUpdated      = "queue.updated"
 	wsEventDeleted      = "queue.deleted"
+	wsActionCreate      = "create"
+	wsActionUpdate      = "update"
+	wsActionDelete      = "delete"
 	uniqueViolationCode = "23505"
 	nameUniqueIndex     = "queues_name_uniq"
 	colorUniqueIndex    = "queues_color_uniq"
@@ -50,7 +53,10 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest) (*Queue, *errors.A
 		}
 		return nil, errors.Wrap(err, "ERR_DB_INSERT", http.StatusInternalServerError)
 	}
-	d.publish(wsChannelGlobal, wsEventCreated, map[string]any{"queue": Serialize(entity)})
+	d.publish(wsChannelGlobal, wsEventCreated, map[string]any{
+		"action": wsActionCreate,
+		"queue":  Serialize(entity),
+	})
 	return entity, nil
 }
 
@@ -124,7 +130,10 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest) (*Queue, 
 	if appErr != nil {
 		return nil, appErr
 	}
-	d.publish(wsChannelGlobal, wsEventUpdated, map[string]any{"queue": Serialize(reloaded)})
+	d.publish(wsChannelGlobal, wsEventUpdated, map[string]any{
+		"action": wsActionUpdate,
+		"queue":  Serialize(reloaded),
+	})
 	return reloaded, nil
 }
 
@@ -136,7 +145,10 @@ func (d *Deps) Delete(ctx context.Context, id uint) *errors.AppError {
 	if res.RowsAffected == 0 {
 		return errors.New(errQueueNotFound, http.StatusNotFound)
 	}
-	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{"queueId": id})
+	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{
+		"action":  wsActionDelete,
+		"queueId": id,
+	})
 	return nil
 }
 

@@ -34,6 +34,14 @@ func (a *messageTicketAdapter) Show(ctx context.Context, ticketID uint, actor *a
 	return t, nil
 }
 
+func (a *messageTicketAdapter) LoadByID(ctx context.Context, ticketID uint) (message.TicketLike, *apperr.AppError) {
+	t, err := a.deps.LoadByID(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 func (a *messageTicketAdapter) UpdateLastMessage(ctx context.Context, ticketID uint, body string) *apperr.AppError {
 	return a.deps.UpdateLastMessage(ctx, ticketID, body)
 }
@@ -281,11 +289,12 @@ func (a *messageSenderAdapter) SendText(ctx context.Context, whatsappID uint, to
 }
 
 type waeventsMessageAdapter struct {
-	deps *message.Deps
+	deps      *message.Deps
+	ticketDep *ticket.Deps
 }
 
-func newWaeventsMessageAdapter(deps *message.Deps) *waeventsMessageAdapter {
-	return &waeventsMessageAdapter{deps: deps}
+func newWaeventsMessageAdapter(deps *message.Deps, ticketDep *ticket.Deps) *waeventsMessageAdapter {
+	return &waeventsMessageAdapter{deps: deps, ticketDep: ticketDep}
 }
 
 func (a *waeventsMessageAdapter) Create(ctx context.Context, data waevents.MessageData) error {
@@ -305,4 +314,22 @@ func (a *waeventsMessageAdapter) Create(ctx context.Context, data waevents.Messa
 		return appErr
 	}
 	return nil
+}
+
+func (a *waeventsMessageAdapter) BuildAckUpdatePayload(ctx context.Context, messageID string) (any, bool) {
+	msg, appErr := a.deps.FindByID(ctx, messageID)
+	if appErr != nil || msg == nil {
+		return nil, false
+	}
+	payload := map[string]any{
+		"action":  "update",
+		"message": message.Serialize(msg),
+	}
+	if a.ticketDep != nil {
+		t, terr := a.ticketDep.LoadByID(ctx, msg.TicketID)
+		if terr == nil && t != nil {
+			payload["ticket"] = ticket.Serialize(t)
+		}
+	}
+	return payload, true
 }

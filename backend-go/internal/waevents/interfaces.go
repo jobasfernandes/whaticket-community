@@ -55,6 +55,7 @@ type Ticket interface {
 
 type MessageService interface {
 	Create(ctx context.Context, data MessageData) error
+	BuildAckUpdatePayload(ctx context.Context, messageID string) (any, bool)
 }
 
 type MessageData struct {

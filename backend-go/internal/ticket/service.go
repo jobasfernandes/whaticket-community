@@ -229,6 +229,10 @@ func (d *Deps) CountByContactAndStatus(ctx context.Context, contactID uint, stat
 	return count, nil
 }
 
+func (d *Deps) LoadByID(ctx context.Context, id uint) (*Ticket, *errors.AppError) {
+	return d.loadByID(ctx, id)
+}
+
 func (d *Deps) loadByID(ctx context.Context, id uint) (*Ticket, *errors.AppError) {
 	var t Ticket
 	err := d.DB.WithContext(ctx).

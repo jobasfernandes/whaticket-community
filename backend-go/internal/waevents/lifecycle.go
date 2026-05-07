@@ -27,9 +27,11 @@ const (
 
 const (
 	wsNotificationChannel    = "notification"
+	wsWhatsappUpdate         = "whatsapp.update"
 	wsWhatsappSessionUpdate  = "whatsappSession.update"
 	wsWhatsappSessionPairing = "whatsappSession.pairphone"
 	wsAppMessageUpdate       = "appMessage.update"
+	wsActionUpdate           = "update"
 )
 
 func (c *Consumer) emitWhatsappSessionUpdate(ctx context.Context, whatsappID uint) error {
@@ -53,7 +55,15 @@ func (c *Consumer) emitWhatsappSessionUpdate(ctx context.Context, whatsappID uin
 		)
 		return err
 	}
-	c.WS.Publish(wsNotificationChannel, wsWhatsappSessionUpdate, c.WhatsappSvc.SerializeForWS(w))
+	dto := c.WhatsappSvc.SerializeForWS(w)
+	c.WS.Publish(wsNotificationChannel, wsWhatsappUpdate, map[string]any{
+		"action":   wsActionUpdate,
+		"whatsapp": dto,
+	})
+	c.WS.Publish(wsNotificationChannel, wsWhatsappSessionUpdate, map[string]any{
+		"action":  wsActionUpdate,
+		"session": dto,
+	})
 	return nil
 }
 

@@ -34,6 +34,9 @@ func (d *Deps) List(ctx context.Context, ticketID uint, pageNumber int) ([]Messa
 		Find(&messages).Error; err != nil {
 		return nil, 0, false, errors.Wrap(err, "ERR_DB_QUERY", http.StatusInternalServerError)
 	}
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
 	hasMore := count > int64(pageNumber*listPageSize)
 	return messages, count, hasMore, nil
 }

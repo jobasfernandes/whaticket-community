@@ -169,7 +169,15 @@ func (h *Handler) startOrRestart(w http.ResponseWriter, r *http.Request, clearSe
 	}
 
 	if h.Deps.WS != nil {
-		h.Deps.WS.Publish(wsChannelNotification, wsEventSessionUpdate, Serialize(loaded))
+		dto := Serialize(loaded)
+		h.Deps.WS.Publish(wsChannelNotification, wsEventWhatsappUpdate, map[string]any{
+			"action":   wsActionUpdate,
+			"whatsapp": dto,
+		})
+		h.Deps.WS.Publish(wsChannelNotification, wsEventSessionUpdate, map[string]any{
+			"action":  wsActionUpdate,
+			"session": dto,
+		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, messageResponse{Message: "Starting session."})
 	return nil
@@ -206,7 +214,15 @@ func (h *Handler) sessionLogout(w http.ResponseWriter, r *http.Request) error {
 	loaded.Session = ""
 
 	if h.Deps.WS != nil {
-		h.Deps.WS.Publish(wsChannelNotification, wsEventSessionUpdate, Serialize(loaded))
+		dto := Serialize(loaded)
+		h.Deps.WS.Publish(wsChannelNotification, wsEventWhatsappUpdate, map[string]any{
+			"action":   wsActionUpdate,
+			"whatsapp": dto,
+		})
+		h.Deps.WS.Publish(wsChannelNotification, wsEventSessionUpdate, map[string]any{
+			"action":  wsActionUpdate,
+			"session": dto,
+		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, messageResponse{Message: "Session disconnected."})
 	return nil

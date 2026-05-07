@@ -121,6 +121,10 @@ type messageAdapter struct{ deps *message.Deps }
 
 func (a *messageAdapter) Create(_ context.Context, _ waevents.MessageData) error { return nil }
 
+func (a *messageAdapter) BuildAckUpdatePayload(_ context.Context, _ string) (any, bool) {
+	return nil, false
+}
+
 type rmqEnvelopeAdapter struct{ client *rmq.Client }
 
 func (a *rmqEnvelopeAdapter) Publish(ctx context.Context, exchange, routingKey string, env any) error {

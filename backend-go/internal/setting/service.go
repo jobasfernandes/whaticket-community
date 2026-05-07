@@ -20,8 +20,11 @@ type Deps struct {
 	WS WSPublisher
 }
 
-const wsChannelNotification = "notification"
-const wsEventSettingsUpdate = "settings.update"
+const (
+	wsChannelNotification = "notification"
+	wsEventSettingsUpdate = "settings.update"
+	wsActionUpdate        = "update"
+)
 
 func (d *Deps) ListSettings(ctx context.Context) ([]Setting, *errors.AppError) {
 	var settings []Setting
@@ -53,7 +56,10 @@ func (d *Deps) Update(ctx context.Context, key, value string) (*Setting, *errors
 	} else {
 		slog.Info("setting updated", "key", key, "value", value)
 		if d.WS != nil {
-			d.WS.Publish(wsChannelNotification, wsEventSettingsUpdate, Serialize(&s))
+			d.WS.Publish(wsChannelNotification, wsEventSettingsUpdate, map[string]any{
+				"action":  wsActionUpdate,
+				"setting": Serialize(&s),
+			})
 		}
 	}
 

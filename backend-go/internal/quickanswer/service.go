@@ -18,6 +18,9 @@ const (
 	wsEventCreated           = "quickAnswer.created"
 	wsEventUpdated           = "quickAnswer.updated"
 	wsEventDeleted           = "quickAnswer.deleted"
+	wsActionCreate           = "create"
+	wsActionUpdate           = "update"
+	wsActionDelete           = "delete"
 	uniqueViolationCode      = "23505"
 	shortcutUniqueConstraint = "quick_answers_shortcut_uniq"
 	errShortcutDuplicated    = "ERR__SHORTCUT_DUPLICATED"
@@ -45,7 +48,10 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest) (*QuickAnswer, *er
 		}
 		return nil, errors.Wrap(err, "ERR_DB_INSERT", http.StatusInternalServerError)
 	}
-	d.publish(wsChannelGlobal, wsEventCreated, map[string]any{"quickAnswer": Serialize(entity)})
+	d.publish(wsChannelGlobal, wsEventCreated, map[string]any{
+		"action":      wsActionCreate,
+		"quickAnswer": Serialize(entity),
+	})
 	return entity, nil
 }
 
@@ -124,7 +130,10 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest) (*QuickAn
 	if appErr != nil {
 		return nil, appErr
 	}
-	d.publish(wsChannelGlobal, wsEventUpdated, map[string]any{"quickAnswer": Serialize(reloaded)})
+	d.publish(wsChannelGlobal, wsEventUpdated, map[string]any{
+		"action":      wsActionUpdate,
+		"quickAnswer": Serialize(reloaded),
+	})
 	return reloaded, nil
 }
 
@@ -136,7 +145,10 @@ func (d *Deps) Delete(ctx context.Context, id uint) *errors.AppError {
 	if res.RowsAffected == 0 {
 		return errors.New(errNoQuickAnswersFound, http.StatusNotFound)
 	}
-	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{"quickAnswerId": id})
+	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{
+		"action":        wsActionDelete,
+		"quickAnswerId": id,
+	})
 	return nil
 }
 

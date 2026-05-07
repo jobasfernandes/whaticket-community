@@ -18,6 +18,9 @@ const (
 	wsEventCreated       = "contact.created"
 	wsEventUpdated       = "contact.updated"
 	wsEventDeleted       = "contact.deleted"
+	wsActionCreate       = "create"
+	wsActionUpdate       = "update"
+	wsActionDelete       = "delete"
 	pgUniqueViolation    = "23505"
 	contactNumberUnique  = "contacts_number_uniq"
 	errNoContactFound    = "ERR_NO_CONTACT_FOUND"
@@ -75,10 +78,15 @@ func (d *Deps) CreateOrUpdate(ctx context.Context, req CreateOrUpdateRequest) (*
 	}
 
 	event := wsEventUpdated
+	emitAction := wsActionUpdate
 	if action == actionCreated {
 		event = wsEventCreated
+		emitAction = wsActionCreate
 	}
-	d.publish(wsChannelGlobal, event, Serialize(reloaded))
+	d.publish(wsChannelGlobal, event, map[string]any{
+		"action":  emitAction,
+		"contact": Serialize(reloaded),
+	})
 	return reloaded, nil
 }
 
@@ -123,7 +131,10 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest) (*Contact, *errors
 	if appErr != nil {
 		return nil, appErr
 	}
-	d.publish(wsChannelGlobal, wsEventCreated, Serialize(reloaded))
+	d.publish(wsChannelGlobal, wsEventCreated, map[string]any{
+		"action":  wsActionCreate,
+		"contact": Serialize(reloaded),
+	})
 	return reloaded, nil
 }
 
@@ -191,7 +202,10 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest) (*Contact
 	if loadErr != nil {
 		return nil, loadErr
 	}
-	d.publish(wsChannelGlobal, wsEventUpdated, Serialize(reloaded))
+	d.publish(wsChannelGlobal, wsEventUpdated, map[string]any{
+		"action":  wsActionUpdate,
+		"contact": Serialize(reloaded),
+	})
 	return reloaded, nil
 }
 
@@ -215,7 +229,10 @@ func (d *Deps) Delete(ctx context.Context, id uint) *errors.AppError {
 		}
 		return errors.Wrap(txErr, "ERR_DB_DELETE", http.StatusInternalServerError)
 	}
-	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{"contactId": id})
+	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{
+		"action":    wsActionDelete,
+		"contactId": id,
+	})
 	return nil
 }
 

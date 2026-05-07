@@ -9,6 +9,7 @@ import (
 
 type TicketService interface {
 	Show(ctx context.Context, ticketID uint, actor *auth.UserClaims) (TicketLike, *errors.AppError)
+	LoadByID(ctx context.Context, ticketID uint) (TicketLike, *errors.AppError)
 	UpdateLastMessage(ctx context.Context, ticketID uint, body string) *errors.AppError
 	SerializeTicket(t TicketLike) any
 }

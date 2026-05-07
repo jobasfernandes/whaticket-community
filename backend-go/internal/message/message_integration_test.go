@@ -23,6 +23,10 @@ func (s *stubTicketSvc) Show(_ context.Context, _ uint, _ *auth.UserClaims) (mes
 	return nil, nil
 }
 
+func (s *stubTicketSvc) LoadByID(_ context.Context, _ uint) (message.TicketLike, *apperr.AppError) {
+	return nil, nil
+}
+
 func (s *stubTicketSvc) UpdateLastMessage(_ context.Context, _ uint, _ string) *apperr.AppError {
 	s.updates++
 	return nil
@@ -94,7 +98,7 @@ func TestCreateMessageUpsertsAndKeepsHigherAck(t *testing.T) {
 		t.Fatalf("expected 1 message row, got %d", count)
 	}
 
-	if events := wsRec.Find("appMessage.create"); len(events) != 2 {
-		t.Fatalf("expected 2 appMessage.create events, got %d", len(events))
+	if events := wsRec.Find("appMessage.create"); len(events) != 4 {
+		t.Fatalf("expected 4 appMessage.create events (2 calls × ticket+notification channels), got %d", len(events))
 	}
 }

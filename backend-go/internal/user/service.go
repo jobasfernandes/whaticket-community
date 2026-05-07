@@ -20,6 +20,9 @@ const (
 	wsEventCreated          = "user.created"
 	wsEventUpdated          = "user.updated"
 	wsEventDeleted          = "user.deleted"
+	wsActionCreate          = "create"
+	wsActionUpdate          = "update"
+	wsActionDelete          = "delete"
 	pgUniqueViolationCode   = "23505"
 	pgFKViolationCode       = "23503"
 	settingKeyUserCreation  = "userCreation"
@@ -101,7 +104,10 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest, isSignup, actorIsA
 		return nil, appErr
 	}
 
-	d.publish(wsChannelGlobal, wsEventCreated, Serialize(loaded))
+	d.publish(wsChannelGlobal, wsEventCreated, map[string]any{
+		"action": wsActionCreate,
+		"user":   Serialize(loaded),
+	})
 	return loaded, nil
 }
 
@@ -200,7 +206,10 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest, actorIsAd
 		return nil, appErr
 	}
 
-	d.publish(wsChannelGlobal, wsEventUpdated, Serialize(loaded))
+	d.publish(wsChannelGlobal, wsEventUpdated, map[string]any{
+		"action": wsActionUpdate,
+		"user":   Serialize(loaded),
+	})
 	return loaded, nil
 }
 
@@ -229,7 +238,10 @@ func (d *Deps) Delete(ctx context.Context, id uint, actorIsAdmin bool) *errors.A
 		return errors.Wrap(txErr, "ERR_DB_DELETE", http.StatusInternalServerError)
 	}
 
-	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{"userId": id})
+	d.publish(wsChannelGlobal, wsEventDeleted, map[string]any{
+		"action": wsActionDelete,
+		"userId": id,
+	})
 	return nil
 }
 

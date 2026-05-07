@@ -105,10 +105,14 @@ func (c *Consumer) updateAckWithRetry(ctx context.Context, msgID string, ack int
 				)
 				return nil
 			}
-			c.WS.Publish(ticketChannel(ticketID), wsAppMessageUpdate, map[string]any{
-				"id":  msgID,
-				"ack": ack,
-			})
+			payload, ok := c.MessageSvc.BuildAckUpdatePayload(ctx, msgID)
+			if !ok || payload == nil {
+				c.Log.Warn("waevents ack payload build failed",
+					slog.String("message_id", msgID),
+				)
+				return nil
+			}
+			c.WS.Publish(ticketChannel(ticketID), wsAppMessageUpdate, payload)
 			return nil
 		}
 	}

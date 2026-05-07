@@ -130,7 +130,7 @@ func Run(ctx context.Context, cfg appConfig) error {
 		WhatsappSvc: newWaeventsWhatsappAdapter(whatsappDeps, rmqClient),
 		ContactSvc:  newWaeventsContactAdapter(contactDeps),
 		TicketSvc:   newWaeventsTicketAdapter(ticketDeps),
-		MessageSvc:  newWaeventsMessageAdapter(messageDeps),
+		MessageSvc:  newWaeventsMessageAdapter(messageDeps, ticketDeps),
 		Log:         logger,
 	}
 

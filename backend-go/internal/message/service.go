@@ -19,6 +19,9 @@ const (
 	wsEventAppMessageCreate = "appMessage.create"
 	wsEventAppMessageDelete = "appMessage.delete"
 	wsChannelTicketPrefix   = "ticket:"
+	wsChannelNotification   = "notification"
+	wsActionCreate          = "create"
+	wsActionDelete          = "delete"
 	errInvalidInput         = "ERR_INVALID_INPUT"
 	errMessageNotFound      = "ERR_MESSAGE_NOT_FOUND"
 	errNoPermission         = "ERR_NO_PERMISSION"
@@ -79,7 +82,17 @@ func (d *Deps) Create(ctx context.Context, data MessageData) (*Message, *errors.
 			return nil, upErr
 		}
 	}
-	d.publish(wsChannelTicketPrefix+strconv.FormatUint(uint64(data.TicketID), 10), wsEventAppMessageCreate, Serialize(reloaded))
+	payload := map[string]any{
+		"action":  wsActionCreate,
+		"message": Serialize(reloaded),
+	}
+	if d.TicketSvc != nil {
+		if t, terr := d.TicketSvc.LoadByID(ctx, data.TicketID); terr == nil && t != nil {
+			payload["ticket"] = d.TicketSvc.SerializeTicket(t)
+		}
+	}
+	d.publish(wsChannelTicketPrefix+strconv.FormatUint(uint64(data.TicketID), 10), wsEventAppMessageCreate, payload)
+	d.publish(wsChannelNotification, wsEventAppMessageCreate, payload)
 	return reloaded, nil
 }
 
@@ -137,10 +150,19 @@ func (d *Deps) Delete(ctx context.Context, messageID string, actor *auth.UserCla
 			return upErr
 		}
 	}
+	deletePayload := map[string]any{
+		"action":    wsActionDelete,
+		"messageId": messageID,
+	}
+	if d.TicketSvc != nil {
+		if t, terr := d.TicketSvc.LoadByID(ctx, ticketID); terr == nil && t != nil {
+			deletePayload["ticket"] = d.TicketSvc.SerializeTicket(t)
+		}
+	}
 	d.publish(
 		wsChannelTicketPrefix+strconv.FormatUint(uint64(ticketID), 10),
 		wsEventAppMessageDelete,
-		map[string]any{"messageId": messageID},
+		deletePayload,
 	)
 	slog.Default().Info("message deleted",
 		"actor_id", actor.ID,
@@ -149,6 +171,10 @@ func (d *Deps) Delete(ctx context.Context, messageID string, actor *auth.UserCla
 		"was_last_message", lastMessageChanged,
 	)
 	return nil
+}
+
+func (d *Deps) FindByID(ctx context.Context, id string) (*Message, *errors.AppError) {
+	return d.findByID(ctx, id)
 }
 
 func (d *Deps) findByID(ctx context.Context, id string) (*Message, *errors.AppError) {

@@ -18,6 +18,11 @@ const (
 	wsChannelNotification       = "notification"
 	wsEventSessionUpdate        = "whatsappSession.update"
 	wsEventSessionPairPhone     = "whatsappSession.pairphone"
+	wsEventWhatsappUpdate       = "whatsapp.update"
+	wsEventWhatsappDelete       = "whatsapp.delete"
+	wsActionCreate              = "create"
+	wsActionUpdate              = "update"
+	wsActionDelete              = "delete"
 	pgUniqueViolationCode       = "23505"
 	whatsappNameUniqueIndex     = "whatsapps_name_uniq"
 	whatsappOneDefaultUniqueIdx = "whatsapps_one_default"
@@ -119,7 +124,15 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest) (*Whatsapp, *error
 		)
 	}
 
-	d.publish(wsChannelNotification, wsEventSessionUpdate, Serialize(loaded))
+	dto := Serialize(loaded)
+	d.publish(wsChannelNotification, wsEventWhatsappUpdate, map[string]any{
+		"action":   wsActionUpdate,
+		"whatsapp": dto,
+	})
+	d.publish(wsChannelNotification, wsEventSessionUpdate, map[string]any{
+		"action":  wsActionUpdate,
+		"session": dto,
+	})
 	return loaded, nil
 }
 
@@ -199,7 +212,15 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest) (*Whatsap
 		}
 	}
 
-	d.publish(wsChannelNotification, wsEventSessionUpdate, Serialize(loaded))
+	dto := Serialize(loaded)
+	d.publish(wsChannelNotification, wsEventWhatsappUpdate, map[string]any{
+		"action":   wsActionUpdate,
+		"whatsapp": dto,
+	})
+	d.publish(wsChannelNotification, wsEventSessionUpdate, map[string]any{
+		"action":  wsActionUpdate,
+		"session": dto,
+	})
 	return loaded, nil
 }
 
@@ -236,6 +257,10 @@ func (d *Deps) Delete(ctx context.Context, id uint) *errors.AppError {
 		return errors.Wrap(txErr, "ERR_DB_DELETE", http.StatusInternalServerError)
 	}
 
+	d.publish(wsChannelNotification, wsEventWhatsappDelete, map[string]any{
+		"action":     wsActionDelete,
+		"whatsappId": loaded.ID,
+	})
 	d.publish(wsChannelNotification, wsEventSessionUpdate, map[string]any{
 		"action":  deleteActionLabel,
 		"session": Serialize(loaded),
