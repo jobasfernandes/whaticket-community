@@ -81,22 +81,25 @@ function emitToMessages(name, args) {
   }
 }
 
-class WSClient {
+class SharedClient {
   constructor() {
     this.listeners = new Map();
-    this.subscribed = new Set();
+    this.channelRefs = new Map();
     this.queue = [];
     this.ws = null;
-    this.closed = false;
     this.reconnectMs = RECONNECT_INITIAL_MS;
     this.reconnectTimer = null;
+    this.token = null;
     this.connect();
   }
 
   connect() {
-    if (this.closed) return;
     const token = readToken();
-    if (!token) return;
+    if (!token) {
+      this.scheduleReconnect();
+      return;
+    }
+    this.token = token;
     let url;
     try {
       url = buildWsUrl(getBackendUrl(), token);
@@ -118,7 +121,7 @@ class WSClient {
 
     ws.addEventListener("open", () => {
       this.reconnectMs = RECONNECT_INITIAL_MS;
-      this.subscribed.forEach((channel) => {
+      this.channelRefs.forEach((_count, channel) => {
         ws.send(JSON.stringify({ action: "subscribe", channel }));
       });
       const pending = this.queue.splice(0);
@@ -165,7 +168,6 @@ class WSClient {
   }
 
   scheduleReconnect() {
-    if (this.closed) return;
     if (this.reconnectTimer) return;
     const delay = this.reconnectMs;
     this.reconnectMs = Math.min(this.reconnectMs * 2, RECONNECT_MAX_MS);
@@ -188,19 +190,105 @@ class WSClient {
     });
   }
 
-  on(bucket, fn) {
-    if (typeof fn !== "function") return this;
+  addListener(bucket, fn) {
+    if (typeof fn !== "function") return;
     if (!this.listeners.has(bucket)) this.listeners.set(bucket, new Set());
     this.listeners.get(bucket).add(fn);
+  }
+
+  removeListener(bucket, fn) {
+    const set = this.listeners.get(bucket);
+    if (!set) return;
+    if (fn) set.delete(fn);
+    else set.clear();
+    if (set.size === 0) this.listeners.delete(bucket);
+  }
+
+  acquireChannel(channel) {
+    const current = this.channelRefs.get(channel) || 0;
+    this.channelRefs.set(channel, current + 1);
+    if (current === 0) {
+      this.send({ action: "subscribe", channel });
+    }
+  }
+
+  releaseChannel(channel) {
+    const current = this.channelRefs.get(channel) || 0;
+    if (current <= 1) {
+      this.channelRefs.delete(channel);
+      this.send({ action: "unsubscribe", channel });
+    } else {
+      this.channelRefs.set(channel, current - 1);
+    }
+  }
+
+  send(message) {
+    const json = JSON.stringify(message);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(json);
+    } else {
+      this.queue.push(json);
+    }
+  }
+
+  refreshToken() {
+    const next = readToken();
+    if (next === this.token) return;
+    if (this.ws) {
+      try {
+        this.ws.close(1000, "token rotated");
+      } catch (_) {
+        // ignore
+      }
+      this.ws = null;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectMs = RECONNECT_INITIAL_MS;
+    this.connect();
+  }
+}
+
+let sharedInstance = null;
+
+function getShared() {
+  if (!sharedInstance) {
+    sharedInstance = new SharedClient();
+  } else {
+    sharedInstance.refreshToken();
+  }
+  return sharedInstance;
+}
+
+class SocketHandle {
+  constructor(shared) {
+    this.shared = shared;
+    this.localListeners = new Map();
+    this.acquiredChannels = new Map();
+    this.disposed = false;
+  }
+
+  on(bucket, fn) {
+    if (this.disposed || typeof fn !== "function") return this;
+    if (!this.localListeners.has(bucket)) this.localListeners.set(bucket, new Set());
+    this.localListeners.get(bucket).add(fn);
+    this.shared.addListener(bucket, fn);
     return this;
   }
 
   off(bucket, fn) {
-    const set = this.listeners.get(bucket);
-    if (set) {
-      if (fn) set.delete(fn);
-      else set.clear();
+    const set = this.localListeners.get(bucket);
+    if (!set) return this;
+    if (fn) {
+      set.delete(fn);
+      this.shared.removeListener(bucket, fn);
+    } else {
+      set.forEach((existing) => this.shared.removeListener(bucket, existing));
+      set.clear();
     }
+    if (set.size === 0) this.localListeners.delete(bucket);
     return this;
   }
 
@@ -209,43 +297,49 @@ class WSClient {
   }
 
   removeAllListeners(bucket) {
-    if (bucket) this.listeners.delete(bucket);
-    else this.listeners.clear();
+    if (bucket) {
+      this.off(bucket);
+    } else {
+      this.localListeners.forEach((set, key) => {
+        set.forEach((fn) => this.shared.removeListener(key, fn));
+      });
+      this.localListeners.clear();
+    }
     return this;
   }
 
   emit(name, ...args) {
+    if (this.disposed) return this;
     const messages = emitToMessages(name, args);
     messages.forEach((m) => {
-      const json = JSON.stringify(m);
-      if (m.action === "subscribe") this.subscribed.add(m.channel);
-      else if (m.action === "unsubscribe") this.subscribed.delete(m.channel);
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(json);
-      } else {
-        this.queue.push(json);
+      if (m.action === "subscribe") {
+        const count = this.acquiredChannels.get(m.channel) || 0;
+        this.acquiredChannels.set(m.channel, count + 1);
+        this.shared.acquireChannel(m.channel);
+      } else if (m.action === "unsubscribe") {
+        const count = this.acquiredChannels.get(m.channel) || 0;
+        if (count <= 0) return;
+        if (count === 1) this.acquiredChannels.delete(m.channel);
+        else this.acquiredChannels.set(m.channel, count - 1);
+        this.shared.releaseChannel(m.channel);
       }
     });
     return this;
   }
 
   disconnect() {
-    this.closed = true;
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.ws) {
-      try {
-        this.ws.close(1000, "client disconnect");
-      } catch (_) {
-        // ignore
+    if (this.disposed) return;
+    this.disposed = true;
+    this.localListeners.forEach((set, bucket) => {
+      set.forEach((fn) => this.shared.removeListener(bucket, fn));
+    });
+    this.localListeners.clear();
+    this.acquiredChannels.forEach((count, channel) => {
+      for (let i = 0; i < count; i += 1) {
+        this.shared.releaseChannel(channel);
       }
-      this.ws = null;
-    }
-    this.listeners.clear();
-    this.subscribed.clear();
-    this.queue = [];
+    });
+    this.acquiredChannels.clear();
   }
 
   close() {
@@ -256,5 +350,5 @@ class WSClient {
 export { KNOWN_BUCKETS };
 
 export default function openSocket() {
-  return new WSClient();
+  return new SocketHandle(getShared());
 }
