@@ -268,6 +268,42 @@ func parseListParams(r *http.Request) (ListParams, *errors.AppError) {
 }
 
 func parseQueueIDs(raw string) ([]*uint, *errors.AppError) {
+	trimmed := strings.TrimSpace(raw)
+	if strings.HasPrefix(trimmed, "[") {
+		var jsonIDs []any
+		if err := json.Unmarshal([]byte(trimmed), &jsonIDs); err != nil {
+			return nil, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
+		}
+		out := make([]*uint, 0, len(jsonIDs))
+		for _, item := range jsonIDs {
+			if item == nil {
+				out = append(out, nil)
+				continue
+			}
+			switch v := item.(type) {
+			case float64:
+				if v < 0 {
+					return nil, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
+				}
+				id := uint(v)
+				out = append(out, &id)
+			case string:
+				if strings.EqualFold(v, "null") {
+					out = append(out, nil)
+					continue
+				}
+				parsed, err := strconv.ParseUint(v, 10, 64)
+				if err != nil {
+					return nil, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
+				}
+				id := uint(parsed)
+				out = append(out, &id)
+			default:
+				return nil, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
+			}
+		}
+		return out, nil
+	}
 	parts := splitCSV(raw)
 	out := make([]*uint, 0, len(parts))
 	for _, p := range parts {
