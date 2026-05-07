@@ -120,6 +120,21 @@ services:
     ports:
       - "8081:8081"
 
+  frontend:
+    profiles: ["frontend"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.go
+    image: whaticket-frontend:local
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8080/}
+      VITE_HOURS_CLOSE_TICKETS_AUTO: ${VITE_HOURS_CLOSE_TICKETS_AUTO:-}
+    ports:
+      - "3000:80"
+
 volumes:
   postgres-data:
   rabbitmq-data:
