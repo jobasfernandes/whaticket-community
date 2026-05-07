@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -26,10 +27,20 @@ func main() {
 		cmd = os.Args[1]
 	}
 
+	if err := Run(context.Background(), dsn, cmd, logger); err != nil {
+		logger.Error("migration failed", "cmd", cmd, "err", err)
+		os.Exit(1)
+	}
+	logger.Info("migration completed", "cmd", cmd)
+}
+
+func Run(ctx context.Context, dsn, cmd string, logger *slog.Logger) error {
+	if logger == nil {
+		logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	}
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		logger.Error("open database", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer func() {
 		if cerr := db.Close(); cerr != nil {
@@ -39,40 +50,30 @@ func main() {
 
 	goose.SetBaseFS(migrations.FS)
 	if err := goose.SetDialect("postgres"); err != nil {
-		logger.Error("set dialect", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("set dialect: %w", err)
 	}
-
-	ctx := context.Background()
 
 	switch cmd {
 	case "up":
-		err = goose.UpContext(ctx, db, ".")
+		return goose.UpContext(ctx, db, ".")
 	case "down":
-		err = goose.DownContext(ctx, db, ".")
+		return goose.DownContext(ctx, db, ".")
 	case "status":
-		err = goose.StatusContext(ctx, db, ".")
+		return goose.StatusContext(ctx, db, ".")
 	case "version":
-		var v int64
-		v, err = goose.GetDBVersionContext(ctx, db)
-		if err == nil {
-			logger.Info("current version", "version", v)
+		v, err := goose.GetDBVersionContext(ctx, db)
+		if err != nil {
+			return err
 		}
+		logger.Info("current version", "version", v)
+		return nil
 	case "redo":
-		err = goose.RedoContext(ctx, db, ".")
+		return goose.RedoContext(ctx, db, ".")
 	case "reset":
-		err = goose.ResetContext(ctx, db, ".")
+		return goose.ResetContext(ctx, db, ".")
 	default:
-		logger.Error("unknown command", "cmd", cmd, "supported", []string{"up", "down", "status", "version", "redo", "reset"})
-		os.Exit(2)
+		return fmt.Errorf("unknown command %q (supported: up, down, status, version, redo, reset)", cmd)
 	}
-
-	if err != nil {
-		logger.Error("migration failed", "cmd", cmd, "err", err)
-		os.Exit(1)
-	}
-
-	logger.Info("migration completed", "cmd", cmd)
 }
 
 func firstNonEmpty(values ...string) string {

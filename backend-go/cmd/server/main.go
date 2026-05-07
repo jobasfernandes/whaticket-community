@@ -35,16 +35,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := newLogger(cfg.LogLevel)
-	slog.SetDefault(logger)
-
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
+	if err := Run(ctx, cfg); err != nil && !errors.Is(err, context.Canceled) {
+		slog.Error("server exited with error", "err", err)
+		os.Exit(1)
+	}
+}
+
+func Run(ctx context.Context, cfg appConfig) error {
+	logger := newLogger(cfg.LogLevel)
+	slog.SetDefault(logger)
+
 	db, err := openDB(cfg.DatabaseDSN)
 	if err != nil {
-		logger.Error("db connect failed", "err", err)
-		os.Exit(1)
+		return err
 	}
 
 	rmqClient := rmq.New(rmq.Config{URL: cfg.RMQURL, Logger: logger})
@@ -111,6 +117,11 @@ func main() {
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.Recoverer)
+	router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
 	authDeps.Routes(router)
 	userHandler.Routes(router, []byte(cfg.AccessSecret))
 	userHandler.MountSignup(router)
@@ -138,16 +149,26 @@ func main() {
 		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	httpErrCh := make(chan error, 1)
 	go func() {
 		logger.Info("http listening", "addr", cfg.ListenAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("http server crashed", "err", err)
-			cancel()
+			httpErrCh <- err
+			return
 		}
+		httpErrCh <- nil
 	}()
 
-	<-ctx.Done()
-	logger.Info("shutting down")
+	select {
+	case <-ctx.Done():
+		logger.Info("shutting down")
+	case err := <-httpErrCh:
+		if err != nil {
+			logger.Error("http server crashed", "err", err)
+			return err
+		}
+	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
@@ -162,4 +183,5 @@ func main() {
 		logger.Warn("rmq shutdown", "err", err)
 	}
 	logger.Info("bye")
+	return nil
 }

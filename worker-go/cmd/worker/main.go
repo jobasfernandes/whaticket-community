@@ -28,13 +28,16 @@ const (
 )
 
 func main() {
-	if err := run(); err != nil {
+	rootCtx, rootCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer rootCancel()
+
+	if err := Run(rootCtx); err != nil {
 		slog.Error("worker exited with error", slog.Any("err", err))
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func Run(rootCtx context.Context) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -44,9 +47,6 @@ func run() error {
 	slog.SetDefault(logger)
 
 	logger.Info("worker bootstrap", slog.Any("config", cfg.Redacted()))
-
-	rootCtx, rootCancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer rootCancel()
 
 	openCtx, openCancel := context.WithTimeout(rootCtx, rmqStartTimeout)
 	defer openCancel()
