@@ -156,18 +156,21 @@ func scopeSearchParam(raw string) func(*gorm.DB) *gorm.DB {
 
 func scopeVisibility(actor *auth.UserClaims, queues []uint, showAll bool) func(*gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		if actor.Profile == "admin" && showAll {
+		if actor.Profile == "admin" {
+			return db
+		}
+		if showAll {
 			return db
 		}
 		if len(queues) > 0 {
 			return db.Where(
-				"tickets.user_id = ? OR tickets.queue_id IN ? OR (tickets.status = ? AND tickets.queue_id IS NULL)",
-				actor.ID, queues, statusPending,
+				"tickets.user_id = ? OR tickets.queue_id IN ? OR tickets.queue_id IS NULL",
+				actor.ID, queues,
 			)
 		}
 		return db.Where(
-			"tickets.user_id = ? OR (tickets.status = ? AND tickets.queue_id IS NULL)",
-			actor.ID, statusPending,
+			"tickets.user_id = ? OR tickets.queue_id IS NULL",
+			actor.ID,
 		)
 	}
 }

@@ -2,9 +2,11 @@ package auth
 
 import (
 	"context"
+	stdErrors "errors"
 	"net/http"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 
 	"github.com/jobasfernandes/whaticket-go-backend/internal/platform/errors"
@@ -44,6 +46,10 @@ func IsAuth(secret []byte) func(http.Handler) http.Handler {
 			}
 			claims, err := ParseAccessToken(parts[1], secret)
 			if err != nil {
+				if isTokenExpired(err) {
+					httpx.WriteError(w, errors.New("ERR_SESSION_EXPIRED", http.StatusForbidden))
+					return
+				}
 				httpx.WriteError(w, errors.New("ERR_INVALID_TOKEN", http.StatusUnauthorized))
 				return
 			}
@@ -62,6 +68,10 @@ func IsAdmin(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isTokenExpired(err error) bool {
+	return stdErrors.Is(err, jwt.ErrTokenExpired)
 }
 
 func IsAuthAPI(db *gorm.DB, settings SettingChecker) func(http.Handler) http.Handler {
