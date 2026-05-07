@@ -10,18 +10,18 @@ import (
 )
 
 type User struct {
-	ID           uint           `gorm:"primaryKey;autoIncrement"`
-	Name         string         `gorm:"size:255;not null"`
-	Email        string         `gorm:"size:255;not null;uniqueIndex:users_email_uniq"`
-	PasswordHash string         `gorm:"column:password_hash;size:255;not null" json:"-"`
-	Password     string         `gorm:"-" json:"-"`
-	Profile      string         `gorm:"size:50;not null;default:admin"`
-	WhatsappID   *uint          `gorm:"column:whatsapp_id"`
-	Whatsapp     *Whatsapp      `gorm:"foreignKey:WhatsappID"`
-	Queues       []queue.Queue  `gorm:"many2many:user_queues;"`
-	TokenVersion int            `gorm:"column:token_version;not null;default:0" json:"-"`
-	CreatedAt    time.Time      `gorm:"not null;default:now()"`
-	UpdatedAt    time.Time      `gorm:"not null;default:now()"`
+	ID           uint          `gorm:"primaryKey;autoIncrement"`
+	Name         string        `gorm:"size:255;not null"`
+	Email        string        `gorm:"size:255;not null;uniqueIndex:users_email_uniq"`
+	PasswordHash string        `gorm:"column:password_hash;size:255;not null" json:"-"`
+	Password     string        `gorm:"-" json:"-"`
+	Profile      string        `gorm:"size:50;not null;default:admin"`
+	WhatsappID   *uint         `gorm:"column:whatsapp_id"`
+	Whatsapp     *Whatsapp     `gorm:"foreignKey:WhatsappID"`
+	Queues       []queue.Queue `gorm:"many2many:user_queues;"`
+	TokenVersion int           `gorm:"column:token_version;not null;default:0" json:"-"`
+	CreatedAt    time.Time     `gorm:"not null;default:now()"`
+	UpdatedAt    time.Time     `gorm:"not null;default:now()"`
 }
 
 func (User) TableName() string {

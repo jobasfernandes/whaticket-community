@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	pageSize                  = 20
-	wsChannelGlobal           = "global"
-	wsEventCreated            = "quickAnswer.created"
-	wsEventUpdated            = "quickAnswer.updated"
-	wsEventDeleted            = "quickAnswer.deleted"
-	uniqueViolationCode       = "23505"
-	shortcutUniqueConstraint  = "quick_answers_shortcut_uniq"
-	errShortcutDuplicated     = "ERR__SHORTCUT_DUPLICATED"
-	errNoQuickAnswersFound    = "ERR_NO_QUICK_ANSWERS_FOUND"
+	pageSize                 = 20
+	wsChannelGlobal          = "global"
+	wsEventCreated           = "quickAnswer.created"
+	wsEventUpdated           = "quickAnswer.updated"
+	wsEventDeleted           = "quickAnswer.deleted"
+	uniqueViolationCode      = "23505"
+	shortcutUniqueConstraint = "quick_answers_shortcut_uniq"
+	errShortcutDuplicated    = "ERR__SHORTCUT_DUPLICATED"
+	errNoQuickAnswersFound   = "ERR_NO_QUICK_ANSWERS_FOUND"
 )
 
 type WSPublisher interface {

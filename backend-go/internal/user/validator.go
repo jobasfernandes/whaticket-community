@@ -21,21 +21,21 @@ const (
 var validate = validator.New(validator.WithRequiredStructEnabled())
 
 type CreateRequest struct {
-	Name       string  `json:"name" validate:"required,min=2,max=255"`
-	Email      string  `json:"email" validate:"required,email"`
-	Password   string  `json:"password" validate:"required,min=5"`
-	Profile    string  `json:"profile" validate:"omitempty,oneof=admin user"`
-	QueueIDs   []uint  `json:"queueIds" validate:"omitempty,dive,gt=0"`
-	WhatsappID *uint   `json:"whatsappId" validate:"omitempty,gt=0"`
+	Name       string `json:"name" validate:"required,min=2,max=255"`
+	Email      string `json:"email" validate:"required,email"`
+	Password   string `json:"password" validate:"required,min=5"`
+	Profile    string `json:"profile" validate:"omitempty,oneof=admin user"`
+	QueueIDs   []uint `json:"queueIds" validate:"omitempty,dive,gt=0"`
+	WhatsappID *uint  `json:"whatsappId" validate:"omitempty,gt=0"`
 }
 
 type UpdateRequest struct {
-	Name       *string  `json:"name,omitempty"`
-	Email      *string  `json:"email,omitempty"`
-	Password   *string  `json:"password,omitempty"`
-	Profile    *string  `json:"profile,omitempty" validate:"omitempty,oneof=admin user"`
-	QueueIDs   *[]uint  `json:"queueIds,omitempty"`
-	WhatsappID **uint   `json:"whatsappId,omitempty"`
+	Name       *string `json:"name,omitempty"`
+	Email      *string `json:"email,omitempty"`
+	Password   *string `json:"password,omitempty"`
+	Profile    *string `json:"profile,omitempty" validate:"omitempty,oneof=admin user"`
+	QueueIDs   *[]uint `json:"queueIds,omitempty"`
+	WhatsappID **uint  `json:"whatsappId,omitempty"`
 }
 
 func validateCreate(req *CreateRequest) *errors.AppError {

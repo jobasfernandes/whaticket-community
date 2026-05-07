@@ -106,4 +106,3 @@ func MustLoadSecrets() (accessSecret, refreshSecret []byte) {
 	}
 	return []byte(access), []byte(refresh)
 }
-
