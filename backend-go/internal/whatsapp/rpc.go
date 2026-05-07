@@ -68,8 +68,9 @@ type sendAudioRequest struct {
 	WhatsappID  uint         `json:"whatsappId"`
 	To          string       `json:"to"`
 	Audio       string       `json:"audio"`
-	PTT         bool         `json:"ptt,omitempty"`
-	Seconds     int          `json:"seconds,omitempty"`
+	PTT         *bool        `json:"ptt,omitempty"`
+	Seconds     uint32       `json:"seconds,omitempty"`
+	MimeType    string       `json:"mimeType,omitempty"`
 	ContextInfo *ContextInfo `json:"contextInfo,omitempty"`
 }
 
@@ -79,6 +80,7 @@ type sendVideoRequest struct {
 	Video         string       `json:"video"`
 	Caption       string       `json:"caption,omitempty"`
 	JpegThumbnail string       `json:"jpegThumbnail,omitempty"`
+	MimeType      string       `json:"mimeType,omitempty"`
 	ContextInfo   *ContextInfo `json:"contextInfo,omitempty"`
 }
 
@@ -239,8 +241,17 @@ func SendImage(ctx context.Context, rpc RPCClient, whatsappID uint, to, image, c
 	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
-func SendAudio(ctx context.Context, rpc RPCClient, whatsappID uint, to, audio string, ptt bool, seconds int, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
-	req := sendAudioRequest{WhatsappID: whatsappID, To: to, Audio: audio, PTT: ptt, Seconds: seconds, ContextInfo: contextInfo}
+func SendAudio(ctx context.Context, rpc RPCClient, whatsappID uint, to, audio string, ptt bool, seconds uint32, contextInfo *ContextInfo, mimeType string) (string, time.Time, *errors.AppError) {
+	pttPtr := ptt
+	req := sendAudioRequest{
+		WhatsappID:  whatsappID,
+		To:          to,
+		Audio:       audio,
+		PTT:         &pttPtr,
+		Seconds:     seconds,
+		MimeType:    mimeType,
+		ContextInfo: contextInfo,
+	}
 	var resp messageSendResponse
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendAudio, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
@@ -248,8 +259,16 @@ func SendAudio(ctx context.Context, rpc RPCClient, whatsappID uint, to, audio st
 	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
-func SendVideo(ctx context.Context, rpc RPCClient, whatsappID uint, to, video, caption, jpegThumbnail string, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
-	req := sendVideoRequest{WhatsappID: whatsappID, To: to, Video: video, Caption: caption, JpegThumbnail: jpegThumbnail, ContextInfo: contextInfo}
+func SendVideo(ctx context.Context, rpc RPCClient, whatsappID uint, to, video, caption, jpegThumbnail string, contextInfo *ContextInfo, mimeType string) (string, time.Time, *errors.AppError) {
+	req := sendVideoRequest{
+		WhatsappID:    whatsappID,
+		To:            to,
+		Video:         video,
+		Caption:       caption,
+		JpegThumbnail: jpegThumbnail,
+		MimeType:      mimeType,
+		ContextInfo:   contextInfo,
+	}
 	var resp messageSendResponse
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendVideo, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)

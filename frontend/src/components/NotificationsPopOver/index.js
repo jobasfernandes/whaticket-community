@@ -82,6 +82,7 @@ const NotificationsPopOver = () => {
 	useEffect(() => {
 		const socket = openSocket();
 
+		socket.emit("joinNotification");
 		socket.on("connect", () => socket.emit("joinNotification"));
 
 		socket.on("ticket", data => {

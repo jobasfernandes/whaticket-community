@@ -37,6 +37,11 @@ type Deps struct {
 
 type Sender interface {
 	SendText(ctx context.Context, whatsappID uint, to, body string, quotedID string) (string, time.Time, *errors.AppError)
+	SendImage(ctx context.Context, whatsappID uint, to, dataURL, caption, mimeType, quotedID string) (string, time.Time, *errors.AppError)
+	SendAudio(ctx context.Context, whatsappID uint, to, dataURL, mimeType string, ptt bool, quotedID string) (string, time.Time, *errors.AppError)
+	SendVideo(ctx context.Context, whatsappID uint, to, dataURL, caption, mimeType, quotedID string) (string, time.Time, *errors.AppError)
+	SendDocument(ctx context.Context, whatsappID uint, to, dataURL, fileName, caption, mimeType, quotedID string) (string, time.Time, *errors.AppError)
+	SendSticker(ctx context.Context, whatsappID uint, to, dataURL, quotedID string) (string, time.Time, *errors.AppError)
 }
 
 func (d *Deps) Create(ctx context.Context, data MessageData) (*Message, *errors.AppError) {

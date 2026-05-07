@@ -361,6 +361,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
   useEffect(() => {
     const socket = openSocket();
 
+    socket.emit("joinChatBox", ticketId);
     socket.on("connect", () => socket.emit("joinChatBox", ticketId));
 
     socket.on("appMessage", (data) => {
@@ -375,6 +376,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     });
 
     return () => {
+      socket.emit("leaveChatBox", ticketId);
       socket.disconnect();
     };
   }, [ticketId]);

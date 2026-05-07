@@ -10,12 +10,14 @@ import (
 )
 
 type MessagePayload struct {
-	Event    MessageEvent `json:"event"`
-	MimeType string       `json:"mimeType"`
-	FileName string       `json:"fileName"`
-	MediaURL string       `json:"mediaUrl"`
-	S3Key    string       `json:"s3Key"`
-	Base64   string       `json:"base64"`
+	Event           MessageEvent `json:"event"`
+	MimeType        string       `json:"mimeType"`
+	FileName        string       `json:"fileName"`
+	MediaURL        string       `json:"mediaUrl"`
+	S3Key           string       `json:"s3Key"`
+	Base64          string       `json:"base64"`
+	IsSticker       bool         `json:"isSticker"`
+	StickerAnimated bool         `json:"stickerAnimated"`
 }
 
 type MessageEvent struct {
@@ -47,6 +49,11 @@ const (
 
 const (
 	messageMediaTypeChat      = "chat"
+	messageMediaTypeImage     = "image"
+	messageMediaTypeAudio     = "audio"
+	messageMediaTypeVideo     = "video"
+	messageMediaTypeDocument  = "document"
+	messageMediaTypeSticker   = "sticker"
 	messageEmptyPlaceholder   = "(no content)"
 	lrmRune                   = '‎'
 	maxMessageBodyForFarewell = 4096
@@ -151,11 +158,6 @@ func (c *Consumer) handleMessage(ctx context.Context, whatsappID uint, payloadRa
 		return err
 	}
 
-	mediaType := messageMediaTypeChat
-	if info.Type != "" {
-		mediaType = info.Type
-	}
-
 	mediaURL := payload.MediaURL
 	if mediaURL == "" && payload.Base64 != "" {
 		c.Log.Warn("waevents base64-only media not supported in v1",
@@ -164,6 +166,8 @@ func (c *Consumer) handleMessage(ctx context.Context, whatsappID uint, payloadRa
 			slog.String("mime_type", payload.MimeType),
 		)
 	}
+
+	mediaType := deriveMediaType(payload, info, mediaURL)
 
 	var contactID *uint
 	if !info.IsFromMe {
@@ -337,6 +341,30 @@ func shouldSkipFarewellEcho(w Whatsapp, contact Contact, info MessageInfo, body 
 		"name": contact.GetName(),
 	})
 	return rendered == body
+}
+
+func deriveMediaType(payload MessagePayload, info MessageInfo, mediaURL string) string {
+	if payload.IsSticker {
+		return messageMediaTypeSticker
+	}
+	hasMedia := mediaURL != "" || payload.Base64 != "" || payload.MimeType != ""
+	if hasMedia {
+		mime := strings.ToLower(strings.TrimSpace(payload.MimeType))
+		switch {
+		case strings.HasPrefix(mime, "image/"):
+			return messageMediaTypeImage
+		case strings.HasPrefix(mime, "audio/"):
+			return messageMediaTypeAudio
+		case strings.HasPrefix(mime, "video/"):
+			return messageMediaTypeVideo
+		case mime != "":
+			return messageMediaTypeDocument
+		}
+	}
+	if info.Type != "" {
+		return info.Type
+	}
+	return messageMediaTypeChat
 }
 
 func computeLastMessage(body, fileName, mediaURL string) string {

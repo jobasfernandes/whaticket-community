@@ -20,8 +20,8 @@ type Options struct {
 }
 
 type Result struct {
-	AdminCreated  bool
-	AdminID       uint
+	AdminCreated    bool
+	AdminID         uint
 	SettingsApplied int
 }
 

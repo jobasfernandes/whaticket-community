@@ -37,7 +37,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      "mic-recorder-to-mp3",
       "@material-ui/core",
       "@material-ui/icons",
       "@material-ui/lab",

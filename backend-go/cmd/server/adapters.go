@@ -281,11 +281,34 @@ func newMessageSenderAdapter(rpc whatsapp.RPCClient) *messageSenderAdapter {
 }
 
 func (a *messageSenderAdapter) SendText(ctx context.Context, whatsappID uint, to, body, quotedID string) (string, time.Time, *apperr.AppError) {
-	var ctxInfo *whatsapp.ContextInfo
-	if quotedID != "" {
-		ctxInfo = &whatsapp.ContextInfo{StanzaID: quotedID}
+	return whatsapp.SendText(ctx, a.rpc, whatsappID, to, body, ctxInfoFromQuoted(quotedID))
+}
+
+func (a *messageSenderAdapter) SendImage(ctx context.Context, whatsappID uint, to, dataURL, caption, mimeType, quotedID string) (string, time.Time, *apperr.AppError) {
+	return whatsapp.SendImage(ctx, a.rpc, whatsappID, to, dataURL, caption, mimeType, ctxInfoFromQuoted(quotedID))
+}
+
+func (a *messageSenderAdapter) SendAudio(ctx context.Context, whatsappID uint, to, dataURL, mimeType string, ptt bool, quotedID string) (string, time.Time, *apperr.AppError) {
+	return whatsapp.SendAudio(ctx, a.rpc, whatsappID, to, dataURL, ptt, 0, ctxInfoFromQuoted(quotedID), mimeType)
+}
+
+func (a *messageSenderAdapter) SendVideo(ctx context.Context, whatsappID uint, to, dataURL, caption, mimeType, quotedID string) (string, time.Time, *apperr.AppError) {
+	return whatsapp.SendVideo(ctx, a.rpc, whatsappID, to, dataURL, caption, "", ctxInfoFromQuoted(quotedID), mimeType)
+}
+
+func (a *messageSenderAdapter) SendDocument(ctx context.Context, whatsappID uint, to, dataURL, fileName, caption, mimeType, quotedID string) (string, time.Time, *apperr.AppError) {
+	return whatsapp.SendDocument(ctx, a.rpc, whatsappID, to, dataURL, fileName, caption, mimeType, ctxInfoFromQuoted(quotedID))
+}
+
+func (a *messageSenderAdapter) SendSticker(ctx context.Context, whatsappID uint, to, dataURL, quotedID string) (string, time.Time, *apperr.AppError) {
+	return whatsapp.SendSticker(ctx, a.rpc, whatsappID, to, dataURL, "", "", "", nil, ctxInfoFromQuoted(quotedID))
+}
+
+func ctxInfoFromQuoted(quotedID string) *whatsapp.ContextInfo {
+	if quotedID == "" {
+		return nil
 	}
-	return whatsapp.SendText(ctx, a.rpc, whatsappID, to, body, ctxInfo)
+	return &whatsapp.ContextInfo{StanzaID: quotedID}
 }
 
 type waeventsMessageAdapter struct {
