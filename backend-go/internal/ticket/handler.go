@@ -258,9 +258,9 @@ func parseListParams(r *http.Request) (ListParams, *errors.AppError) {
 		params.ShowAll = true
 	}
 	if dateRaw := q.Get("date"); dateRaw != "" {
-		d, err := time.Parse("2006-01-02", dateRaw)
-		if err != nil {
-			return params, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
+		d, derr := parseDateParam(dateRaw)
+		if derr != nil {
+			return params, derr
 		}
 		params.Date = &d
 	}
@@ -319,6 +319,23 @@ func parseQueueIDs(raw string) ([]*uint, *errors.AppError) {
 		out = append(out, &id)
 	}
 	return out, nil
+}
+
+func parseDateParam(raw string) (time.Time, *errors.AppError) {
+	layouts := []string{
+		"2006-01-02",
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02T15:04:05",
+	}
+	for _, layout := range layouts {
+		if d, err := time.Parse(layout, raw); err == nil {
+			return time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, time.UTC), nil
+		}
+	}
+	return time.Time{}, errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
 }
 
 func splitCSV(raw string) []string {

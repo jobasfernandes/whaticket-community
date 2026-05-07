@@ -44,8 +44,8 @@ type ContextInfo struct {
 }
 
 type messageSendResponse struct {
-	ID        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
+	ID        string `json:"id"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 type sendTextRequest struct {
@@ -227,7 +227,7 @@ func SendText(ctx context.Context, rpc RPCClient, whatsappID uint, to, body stri
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendText, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendImage(ctx context.Context, rpc RPCClient, whatsappID uint, to, image, caption, mimeType string, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
@@ -236,7 +236,7 @@ func SendImage(ctx context.Context, rpc RPCClient, whatsappID uint, to, image, c
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendImage, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendAudio(ctx context.Context, rpc RPCClient, whatsappID uint, to, audio string, ptt bool, seconds int, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
@@ -245,7 +245,7 @@ func SendAudio(ctx context.Context, rpc RPCClient, whatsappID uint, to, audio st
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendAudio, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendVideo(ctx context.Context, rpc RPCClient, whatsappID uint, to, video, caption, jpegThumbnail string, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
@@ -254,7 +254,7 @@ func SendVideo(ctx context.Context, rpc RPCClient, whatsappID uint, to, video, c
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendVideo, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendDocument(ctx context.Context, rpc RPCClient, whatsappID uint, to, document, fileName, caption, mimeType string, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
@@ -263,7 +263,7 @@ func SendDocument(ctx context.Context, rpc RPCClient, whatsappID uint, to, docum
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendDocument, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendSticker(ctx context.Context, rpc RPCClient, whatsappID uint, to, sticker, packID, packName, packPublisher string, emojis []string, contextInfo *ContextInfo) (string, time.Time, *errors.AppError) {
@@ -272,7 +272,7 @@ func SendSticker(ctx context.Context, rpc RPCClient, whatsappID uint, to, sticke
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendSticker, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendContact(ctx context.Context, rpc RPCClient, whatsappID uint, to, name, vcard string) (string, time.Time, *errors.AppError) {
@@ -281,7 +281,7 @@ func SendContact(ctx context.Context, rpc RPCClient, whatsappID uint, to, name, 
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendContact, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func SendLocation(ctx context.Context, rpc RPCClient, whatsappID uint, to string, latitude, longitude float64, name string) (string, time.Time, *errors.AppError) {
@@ -290,7 +290,7 @@ func SendLocation(ctx context.Context, rpc RPCClient, whatsappID uint, to string
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageSendLocation, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func DeleteMessage(ctx context.Context, rpc RPCClient, whatsappID uint, to, msgID string) *errors.AppError {
@@ -308,7 +308,7 @@ func EditMessage(ctx context.Context, rpc RPCClient, whatsappID uint, to, msgID,
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageEdit, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func ReactMessage(ctx context.Context, rpc RPCClient, whatsappID uint, to, msgID, emoji string) (string, time.Time, *errors.AppError) {
@@ -317,7 +317,7 @@ func ReactMessage(ctx context.Context, rpc RPCClient, whatsappID uint, to, msgID
 	if err := rpc.Call(ctx, exchangeWaRPC, routingMessageReact, req, &resp); err != nil {
 		return "", time.Time{}, translateRPCError(err)
 	}
-	return resp.ID, resp.Timestamp, nil
+	return resp.ID, time.Unix(resp.Timestamp, 0), nil
 }
 
 func MarkRead(ctx context.Context, rpc RPCClient, whatsappID uint, chatJID, senderJID string, msgIDs []string, ts int64) *errors.AppError {
