@@ -365,6 +365,8 @@ const MessagesList = ({ ticketId, isGroup }) => {
     socket.on("connect", () => socket.emit("joinChatBox", ticketId));
 
     socket.on("appMessage", (data) => {
+      if (!data.message || data.message.ticketId !== ticketId) return;
+
       if (data.action === "create") {
         dispatch({ type: "ADD_MESSAGE", payload: data.message });
         scrollToBottom();
@@ -467,8 +469,17 @@ const MessagesList = ({ ticketId, isGroup }) => {
         )
       } else return (<></>)
     }*/
-    else if ( /^.*\.(jpe?g|png|gif)?$/i.exec(message.mediaUrl) && message.mediaType === "image") {
+    else if (message.mediaType === "image") {
       return <ModalImageCors imageUrl={message.mediaUrl} />;
+    } else if (message.mediaType === "sticker") {
+      return (
+        <img
+          className={classes.messageMedia}
+          src={message.mediaUrl}
+          alt="sticker"
+          style={{ maxWidth: 180, maxHeight: 180, background: "transparent" }}
+        />
+      );
     } else if (message.mediaType === "audio") {
       return <Audio url={message.mediaUrl} />
     } else if (message.mediaType === "video") {
