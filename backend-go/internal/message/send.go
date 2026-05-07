@@ -7,6 +7,7 @@ import (
 	stdErrors "errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -184,6 +185,8 @@ func (h *Handler) dispatchMultipartFile(ctx context.Context, ticketID, whatsappI
 		return MessageDTO{}, sendErr
 	}
 
+	mediaURL := h.uploadOutboundMedia(ctx, ticketID, id, displayName, data, mimeType)
+
 	cid := contactID
 	created, appErr := h.Deps.Create(ctx, MessageData{
 		ID:        id,
@@ -191,7 +194,7 @@ func (h *Handler) dispatchMultipartFile(ctx context.Context, ticketID, whatsappI
 		ContactID: &cid,
 		Body:      body,
 		MediaType: kind,
-		MediaURL:  "",
+		MediaURL:  mediaURL,
 		FromMe:    true,
 		Read:      true,
 		Ack:       0,
@@ -200,6 +203,52 @@ func (h *Handler) dispatchMultipartFile(ctx context.Context, ticketID, whatsappI
 		return MessageDTO{}, appErr
 	}
 	return Serialize(created), nil
+}
+
+func (h *Handler) uploadOutboundMedia(ctx context.Context, ticketID uint, msgID, fileName string, data []byte, mimeType string) string {
+	if h.Deps == nil || h.Deps.MediaUploader == nil {
+		return ""
+	}
+	safeName := sanitizeObjectName(fileName)
+	if safeName == "" {
+		safeName = msgID
+	}
+	objectKey := fmt.Sprintf("wa-outbound/%d/%s/%s", ticketID, msgID, safeName)
+	publicURL, err := h.Deps.MediaUploader.Upload(ctx, objectKey, data, mimeType)
+	if err != nil {
+		logger := h.Logger
+		if logger == nil {
+			logger = slog.Default()
+		}
+		logger.Warn("outbound media upload failed",
+			slog.String("object_key", objectKey),
+			slog.Any("err", err),
+		)
+		return ""
+	}
+	return publicURL
+}
+
+func sanitizeObjectName(name string) string {
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = filepath.Base(trimmed)
+	var b strings.Builder
+	b.Grow(len(trimmed))
+	for _, r := range trimmed {
+		switch {
+		case r >= 'a' && r <= 'z',
+			r >= 'A' && r <= 'Z',
+			r >= '0' && r <= '9',
+			r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('_')
+		}
+	}
+	return b.String()
 }
 
 func (h *Handler) dispatchSend(ctx context.Context, kind string, whatsappID uint, to, dataURL, mimeType, fileName, caption string) (string, *errors.AppError) {

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS whatsapps (
     read_messages BOOLEAN NOT NULL DEFAULT false,
     ignore_groups BOOLEAN NOT NULL DEFAULT false,
     ignore_status BOOLEAN NOT NULL DEFAULT false,
-    media_delivery VARCHAR(20) NOT NULL DEFAULT 'base64',
+    media_delivery VARCHAR(20) NOT NULL DEFAULT 's3',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

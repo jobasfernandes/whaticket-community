@@ -69,6 +69,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       BACKEND_LISTEN_ADDR: :8080
       DATABASE_URL: postgres://whaticket:whaticket@postgres:5432/whaticket?sslmode=disable
@@ -83,6 +85,12 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@whaticket.com}
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin}
+      BACKEND_S3_ENDPOINT: minio:9000
+      BACKEND_S3_ACCESS_KEY: minioadmin
+      BACKEND_S3_SECRET_KEY: minioadmin
+      BACKEND_S3_BUCKET: whaticket-media
+      BACKEND_S3_PUBLIC_URL: http://localhost:9000
+      BACKEND_S3_USE_SSL: "false"
     ports:
       - "8080:8080"
 

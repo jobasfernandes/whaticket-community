@@ -22,11 +22,15 @@ func main() {
 		cmd = os.Args[1]
 	}
 
-	if err := dbmigrate.Run(context.Background(), dsn, cmd, logger); err != nil {
+	if err := Run(context.Background(), dsn, cmd, logger); err != nil {
 		logger.Error("migration failed", "cmd", cmd, "err", err)
 		os.Exit(1)
 	}
 	logger.Info("migration completed", "cmd", cmd)
+}
+
+func Run(ctx context.Context, dsn, cmd string, logger *slog.Logger) error {
+	return dbmigrate.Run(ctx, dsn, cmd, logger)
 }
 
 func firstNonEmpty(values ...string) string {

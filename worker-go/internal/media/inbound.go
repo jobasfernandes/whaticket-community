@@ -2,7 +2,6 @@ package media
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"mime"
@@ -23,10 +22,7 @@ const (
 )
 
 const (
-	ModeBase64 = "base64"
-	ModeS3     = "s3"
-	ModeURL    = "url"
-	ModeBoth   = "both"
+	ModeS3 = "s3"
 )
 
 type Uploader interface {
@@ -130,7 +126,7 @@ var wellKnownMimeExt = map[string]string{
 	"application/octet-stream": ".bin",
 }
 
-func ProcessIncoming(ctx context.Context, client *whatsmeow.Client, connID int, evt *events.Message, store Uploader, mediaMode string, log *slog.Logger) (IncomingPayload, error) {
+func ProcessIncoming(ctx context.Context, client *whatsmeow.Client, connID int, evt *events.Message, store Uploader, _ string, log *slog.Logger) (IncomingPayload, error) {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -160,20 +156,7 @@ func ProcessIncoming(ctx context.Context, client *whatsmeow.Client, connID int, 
 	chatUser := evt.Info.Chat.User
 	objectKey := fmt.Sprintf("wa-media/%d/%s/%s", connID, chatUser, payload.FileName)
 
-	switch strings.ToLower(strings.TrimSpace(mediaMode)) {
-	case ModeBase64, "":
-		payload.Base64 = base64.StdEncoding.EncodeToString(data)
-	case ModeS3, ModeURL:
-		uploadIfPossible(ctx, store, objectKey, data, dl.Mime, &payload, log)
-	case ModeBoth:
-		payload.Base64 = base64.StdEncoding.EncodeToString(data)
-		uploadIfPossible(ctx, store, objectKey, data, dl.Mime, &payload, log)
-	default:
-		log.Warn("unknown media mode",
-			slog.String("mode", mediaMode),
-			slog.Int("conn_id", connID),
-		)
-	}
+	uploadIfPossible(ctx, store, objectKey, data, dl.Mime, &payload, log)
 
 	if dl.Kind == KindSticker {
 		payload.IsSticker = true

@@ -29,10 +29,15 @@ const (
 )
 
 type Deps struct {
-	DB        *gorm.DB
-	WS        WSPublisher
-	TicketSvc TicketService
-	Sender    Sender
+	DB            *gorm.DB
+	WS            WSPublisher
+	TicketSvc     TicketService
+	Sender        Sender
+	MediaUploader MediaUploader
+}
+
+type MediaUploader interface {
+	Upload(ctx context.Context, objectKey string, data []byte, mimeType string) (string, error)
 }
 
 type Sender interface {

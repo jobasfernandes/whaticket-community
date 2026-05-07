@@ -62,11 +62,6 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest) (*Whatsapp, *error
 		return nil, appErr
 	}
 
-	mediaDelivery := req.MediaDelivery
-	if mediaDelivery == "" {
-		mediaDelivery = MediaDeliveryBase64
-	}
-
 	entity := &Whatsapp{
 		Name:            req.Name,
 		Status:          StatusOpening,
@@ -75,7 +70,7 @@ func (d *Deps) Create(ctx context.Context, req CreateRequest) (*Whatsapp, *error
 		IsDefault:       req.IsDefault != nil && *req.IsDefault,
 		GreetingMessage: req.GreetingMessage,
 		FarewellMessage: req.FarewellMessage,
-		MediaDelivery:   mediaDelivery,
+		MediaDelivery:   MediaDeliveryS3,
 	}
 	if req.AdvancedSettings != nil {
 		entity.AdvancedSettings = *req.AdvancedSettings
@@ -163,7 +158,7 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest) (*Whatsap
 	}
 
 	updates := buildUpdateMap(&req)
-	settingsChanged := req.AdvancedSettings != nil || req.MediaDelivery != nil
+	settingsChanged := req.AdvancedSettings != nil
 
 	txErr := d.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if req.IsDefault != nil && *req.IsDefault {
@@ -203,7 +198,7 @@ func (d *Deps) Update(ctx context.Context, id uint, req UpdateRequest) (*Whatsap
 		return nil, appErr
 	}
 
-	if settingsChanged && (loaded.AdvancedSettings != existing.AdvancedSettings || loaded.MediaDelivery != existing.MediaDelivery) {
+	if settingsChanged && loaded.AdvancedSettings != existing.AdvancedSettings {
 		if err := PublishUpdateSettings(ctx, d.RMQ, loaded); err != nil {
 			d.logger().Warn("rmq publish session.update_settings failed",
 				slog.Uint64("whatsapp_id", uint64(loaded.ID)),
@@ -414,9 +409,6 @@ func buildUpdateMap(req *UpdateRequest) map[string]any {
 	}
 	if req.IsDefault != nil {
 		updates["is_default"] = *req.IsDefault
-	}
-	if req.MediaDelivery != nil {
-		updates["media_delivery"] = *req.MediaDelivery
 	}
 	if req.AdvancedSettings != nil {
 		updates["always_online"] = req.AdvancedSettings.AlwaysOnline

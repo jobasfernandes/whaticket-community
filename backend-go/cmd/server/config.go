@@ -7,34 +7,46 @@ import (
 )
 
 type appConfig struct {
-	ListenAddr    string
-	DatabaseDSN   string
-	RMQURL        string
-	FrontendURL   string
-	AccessSecret  string
-	RefreshSecret string
-	LogLevel      string
-	AutoMigrate   bool
-	AutoSeed      bool
-	SeedEmail     string
-	SeedName      string
-	SeedPassword  string
+	ListenAddr     string
+	DatabaseDSN    string
+	RMQURL         string
+	FrontendURL    string
+	AccessSecret   string
+	RefreshSecret  string
+	LogLevel       string
+	AutoMigrate    bool
+	AutoSeed       bool
+	SeedEmail      string
+	SeedName       string
+	SeedPassword   string
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioBucket    string
+	MinioPublicURL string
+	MinioUseSSL    bool
 }
 
 func loadConfig() (appConfig, error) {
 	cfg := appConfig{
-		ListenAddr:    envOrDefault("BACKEND_LISTEN_ADDR", ":8080"),
-		DatabaseDSN:   firstNonEmpty(os.Getenv("DATABASE_URL"), os.Getenv("POSTGRES_DSN")),
-		RMQURL:        envOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		FrontendURL:   envOrDefault("FRONTEND_URL", "http://localhost:3000"),
-		AccessSecret:  os.Getenv("JWT_SECRET"),
-		RefreshSecret: os.Getenv("JWT_REFRESH_SECRET"),
-		LogLevel:      envOrDefault("LOG_LEVEL", "info"),
-		AutoMigrate:   envBool("AUTO_MIGRATE", false),
-		AutoSeed:      envBool("AUTO_SEED", false),
-		SeedEmail:     envOrDefault("SEED_ADMIN_EMAIL", "admin@whaticket.com"),
-		SeedName:      envOrDefault("SEED_ADMIN_NAME", "Admin"),
-		SeedPassword:  envOrDefault("SEED_ADMIN_PASSWORD", "admin"),
+		ListenAddr:     envOrDefault("BACKEND_LISTEN_ADDR", ":8080"),
+		DatabaseDSN:    firstNonEmpty(os.Getenv("DATABASE_URL"), os.Getenv("POSTGRES_DSN")),
+		RMQURL:         envOrDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		FrontendURL:    envOrDefault("FRONTEND_URL", "http://localhost:3000"),
+		AccessSecret:   os.Getenv("JWT_SECRET"),
+		RefreshSecret:  os.Getenv("JWT_REFRESH_SECRET"),
+		LogLevel:       envOrDefault("LOG_LEVEL", "info"),
+		AutoMigrate:    envBool("AUTO_MIGRATE", false),
+		AutoSeed:       envBool("AUTO_SEED", false),
+		SeedEmail:      envOrDefault("SEED_ADMIN_EMAIL", "admin@whaticket.com"),
+		SeedName:       envOrDefault("SEED_ADMIN_NAME", "Admin"),
+		SeedPassword:   envOrDefault("SEED_ADMIN_PASSWORD", "admin"),
+		MinioEndpoint:  os.Getenv("BACKEND_S3_ENDPOINT"),
+		MinioAccessKey: os.Getenv("BACKEND_S3_ACCESS_KEY"),
+		MinioSecretKey: os.Getenv("BACKEND_S3_SECRET_KEY"),
+		MinioBucket:    envOrDefault("BACKEND_S3_BUCKET", "whaticket-media"),
+		MinioPublicURL: envOrDefault("BACKEND_S3_PUBLIC_URL", "http://localhost:9000"),
+		MinioUseSSL:    envBool("BACKEND_S3_USE_SSL", false),
 	}
 	if cfg.DatabaseDSN == "" {
 		return cfg, fmt.Errorf("DATABASE_URL or POSTGRES_DSN is required")

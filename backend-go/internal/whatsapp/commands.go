@@ -35,10 +35,7 @@ type updateSettingsPayload struct {
 }
 
 func PublishStartSession(ctx context.Context, pub RMQPublisher, w *Whatsapp) error {
-	mediaMode := w.MediaDelivery
-	if mediaMode == "" {
-		mediaMode = MediaDeliveryBase64
-	}
+	mediaMode := MediaDeliveryS3
 	payload := startSessionPayload{
 		WhatsappID:       w.ID,
 		AdvancedSettings: w.AdvancedSettings,
@@ -68,10 +65,7 @@ func PublishLogout(ctx context.Context, pub RMQPublisher, whatsappID uint) error
 }
 
 func PublishUpdateSettings(ctx context.Context, pub RMQPublisher, w *Whatsapp) error {
-	mediaMode := w.MediaDelivery
-	if mediaMode == "" {
-		mediaMode = MediaDeliveryBase64
-	}
+	mediaMode := MediaDeliveryS3
 	payload := updateSettingsPayload{
 		WhatsappID:       w.ID,
 		AdvancedSettings: w.AdvancedSettings,

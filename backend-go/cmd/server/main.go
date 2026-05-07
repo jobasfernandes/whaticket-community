@@ -18,6 +18,7 @@ import (
 	"github.com/jobasfernandes/whaticket-go-backend/internal/contact"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/dbmigrate"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/dbseed"
+	"github.com/jobasfernandes/whaticket-go-backend/internal/media"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/message"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/queue"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/quickanswer"
@@ -115,8 +116,16 @@ func Run(ctx context.Context, cfg appConfig) error {
 
 	wsHub.SetTicketAuthorizer(ticket.NewWSAuthz(ticketDeps))
 
+	mediaUploader := buildMediaUploader(cfg, logger)
+
 	messageTicketSvc := newMessageTicketAdapter(ticketDeps)
-	messageDeps := &message.Deps{DB: db, WS: wsHub, TicketSvc: messageTicketSvc, Sender: newMessageSenderAdapter(rmqClient)}
+	messageDeps := &message.Deps{
+		DB:            db,
+		WS:            wsHub,
+		TicketSvc:     messageTicketSvc,
+		Sender:        newMessageSenderAdapter(rmqClient),
+		MediaUploader: mediaUploader,
+	}
 	messageHandler := &message.Handler{Deps: messageDeps, Logger: logger, AccessSecret: []byte(cfg.AccessSecret)}
 
 	whatsappDeps := &whatsapp.Deps{DB: db, WS: wsHub, RMQ: rmqClient, RPC: rmqClient, Logger: logger}
@@ -212,4 +221,24 @@ func Run(ctx context.Context, cfg appConfig) error {
 	}
 	logger.Info("bye")
 	return nil
+}
+
+func buildMediaUploader(cfg appConfig, logger *slog.Logger) message.MediaUploader {
+	if cfg.MinioEndpoint == "" {
+		logger.Warn("BACKEND_S3_ENDPOINT not set, outbound media uploads disabled")
+		return media.NoopClient{}
+	}
+	client, err := media.New(media.Config{
+		Endpoint:  cfg.MinioEndpoint,
+		AccessKey: cfg.MinioAccessKey,
+		SecretKey: cfg.MinioSecretKey,
+		Bucket:    cfg.MinioBucket,
+		PublicURL: cfg.MinioPublicURL,
+		UseSSL:    cfg.MinioUseSSL,
+	}, logger)
+	if err != nil {
+		logger.Warn("media client init failed; falling back to noop", "err", err)
+		return media.NoopClient{}
+	}
+	return client
 }

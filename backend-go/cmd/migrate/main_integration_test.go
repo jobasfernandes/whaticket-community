@@ -14,7 +14,7 @@ import (
 	"github.com/jobasfernandes/whaticket-go-backend/internal/db/dbtest"
 )
 
-const expectedMigrations = 10
+const expectedMigrations = 11
 
 func TestMigrateRunUpDownSmoke(t *testing.T) {
 	ctx := context.Background()

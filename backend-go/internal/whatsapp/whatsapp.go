@@ -42,7 +42,7 @@ type Whatsapp struct {
 	GreetingMessage  string           `gorm:"column:greeting_message;type:text;not null;default:''"`
 	FarewellMessage  string           `gorm:"column:farewell_message;type:text;not null;default:''"`
 	AdvancedSettings AdvancedSettings `gorm:"embedded"`
-	MediaDelivery    string           `gorm:"column:media_delivery;size:20;not null;default:'base64'"`
+	MediaDelivery    string           `gorm:"column:media_delivery;size:20;not null;default:'s3'"`
 	Queues           []queue.Queue    `gorm:"many2many:whatsapp_queues;"`
 	CreatedAt        time.Time        `gorm:"column:created_at;not null;default:now()"`
 	UpdatedAt        time.Time        `gorm:"column:updated_at;not null;default:now()"`
@@ -85,7 +85,7 @@ func Serialize(w *Whatsapp) WhatsappDTO {
 	}
 	mediaDelivery := w.MediaDelivery
 	if mediaDelivery == "" {
-		mediaDelivery = MediaDeliveryBase64
+		mediaDelivery = MediaDeliveryS3
 	}
 	return WhatsappDTO{
 		ID:               w.ID,

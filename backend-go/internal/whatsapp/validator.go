@@ -26,7 +26,7 @@ type CreateRequest struct {
 	FarewellMessage  string            `json:"farewellMessage"`
 	IsDefault        *bool             `json:"isDefault"`
 	AdvancedSettings *AdvancedSettings `json:"advancedSettings"`
-	MediaDelivery    string            `json:"mediaDelivery" validate:"omitempty,oneof=base64 s3 both url"`
+	MediaDelivery    string            `json:"-"`
 }
 
 type UpdateRequest struct {
@@ -36,7 +36,7 @@ type UpdateRequest struct {
 	FarewellMessage  *string           `json:"farewellMessage"`
 	IsDefault        *bool             `json:"isDefault"`
 	AdvancedSettings *AdvancedSettings `json:"advancedSettings"`
-	MediaDelivery    *string           `json:"mediaDelivery" validate:"omitempty,oneof=base64 s3 both url"`
+	MediaDelivery    *string           `json:"-"`
 }
 
 func trimCreate(req *CreateRequest) {
