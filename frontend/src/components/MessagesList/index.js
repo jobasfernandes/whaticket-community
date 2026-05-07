@@ -365,7 +365,7 @@ const MessagesList = ({ ticketId, isGroup }) => {
     socket.on("connect", () => socket.emit("joinChatBox", ticketId));
 
     socket.on("appMessage", (data) => {
-      if (!data.message || data.message.ticketId !== ticketId) return;
+      if (!data.message || Number(data.message.ticketId) !== Number(ticketId)) return;
 
       if (data.action === "create") {
         dispatch({ type: "ADD_MESSAGE", payload: data.message });
