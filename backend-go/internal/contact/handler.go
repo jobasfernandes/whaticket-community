@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -34,6 +35,8 @@ func (h *Handler) Routes(r chi.Router, accessSecret []byte) {
 		gr.Get("/contacts", httpx.Wrap(h.index))
 		gr.Get("/contacts/{contactId}", httpx.Wrap(h.show))
 		gr.Post("/contacts", httpx.Wrap(h.store))
+		gr.Post("/contact", httpx.Wrap(h.getOrCreate))
+		gr.Post("/contacts/import", httpx.Wrap(h.importPhoneContacts))
 		gr.Put("/contacts/{contactId}", httpx.Wrap(h.update))
 		gr.With(auth.IsAdmin).Delete("/contacts/{contactId}", httpx.Wrap(h.remove))
 	})
@@ -107,6 +110,36 @@ func (h *Handler) remove(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	httpx.WriteJSON(w, http.StatusOK, deleteResponse{Message: "Contact deleted"})
+	return nil
+}
+
+type getOrCreateRequest struct {
+	Name   string `json:"name"`
+	Number string `json:"number"`
+}
+
+func (h *Handler) getOrCreate(w http.ResponseWriter, r *http.Request) error {
+	var req getOrCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return errors.New("ERR_BAD_REQUEST", http.StatusBadRequest)
+	}
+	number := strings.TrimSpace(req.Number)
+	if number == "" {
+		return errors.New(errInvalidNumber, http.StatusBadRequest)
+	}
+	entity, appErr := h.Deps.CreateOrUpdate(r.Context(), CreateOrUpdateRequest{
+		Number: number,
+		Name:   strings.TrimSpace(req.Name),
+	})
+	if appErr != nil {
+		return appErr
+	}
+	httpx.WriteJSON(w, http.StatusOK, Serialize(entity))
+	return nil
+}
+
+func (h *Handler) importPhoneContacts(w http.ResponseWriter, _ *http.Request) error {
+	httpx.WriteJSON(w, http.StatusNotImplemented, map[string]string{"message": "Phone contacts import not implemented"})
 	return nil
 }
 

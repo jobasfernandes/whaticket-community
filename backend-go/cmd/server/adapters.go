@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jobasfernandes/whaticket-go-backend/internal/auth"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/contact"
@@ -261,6 +262,22 @@ func unwrapContact(c waevents.Contact) *contact.Contact {
 		Name:    c.GetName(),
 		IsGroup: strings.HasSuffix(c.GetNumber(), "g.us"),
 	}
+}
+
+type messageSenderAdapter struct {
+	rpc whatsapp.RPCClient
+}
+
+func newMessageSenderAdapter(rpc whatsapp.RPCClient) *messageSenderAdapter {
+	return &messageSenderAdapter{rpc: rpc}
+}
+
+func (a *messageSenderAdapter) SendText(ctx context.Context, whatsappID uint, to, body, quotedID string) (string, time.Time, *apperr.AppError) {
+	var ctxInfo *whatsapp.ContextInfo
+	if quotedID != "" {
+		ctxInfo = &whatsapp.ContextInfo{StanzaID: quotedID}
+	}
+	return whatsapp.SendText(ctx, a.rpc, whatsappID, to, body, ctxInfo)
 }
 
 type waeventsMessageAdapter struct {

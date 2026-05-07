@@ -196,7 +196,7 @@ const NotificationsPopOver = () => {
 				aria-label="Open Notifications"
 				className={classes.iconButton}
 			>
-				<Badge badgeContent={notifications.length} color="secondary">
+				<Badge overlap="rectangular" badgeContent={notifications.length} color="secondary">
 					<ChatIcon />
 				</Badge>
 			</IconButton>

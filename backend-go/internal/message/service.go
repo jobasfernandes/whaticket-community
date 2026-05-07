@@ -29,6 +29,11 @@ type Deps struct {
 	DB        *gorm.DB
 	WS        WSPublisher
 	TicketSvc TicketService
+	Sender    Sender
+}
+
+type Sender interface {
+	SendText(ctx context.Context, whatsappID uint, to, body string, quotedID string) (string, time.Time, *errors.AppError)
 }
 
 func (d *Deps) Create(ctx context.Context, data MessageData) (*Message, *errors.AppError) {

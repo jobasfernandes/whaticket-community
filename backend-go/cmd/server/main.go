@@ -116,7 +116,7 @@ func Run(ctx context.Context, cfg appConfig) error {
 	wsHub.SetTicketAuthorizer(ticket.NewWSAuthz(ticketDeps))
 
 	messageTicketSvc := newMessageTicketAdapter(ticketDeps)
-	messageDeps := &message.Deps{DB: db, WS: wsHub, TicketSvc: messageTicketSvc}
+	messageDeps := &message.Deps{DB: db, WS: wsHub, TicketSvc: messageTicketSvc, Sender: newMessageSenderAdapter(rmqClient)}
 	messageHandler := &message.Handler{Deps: messageDeps, Logger: logger, AccessSecret: []byte(cfg.AccessSecret)}
 
 	whatsappDeps := &whatsapp.Deps{DB: db, WS: wsHub, RMQ: rmqClient, RPC: rmqClient, Logger: logger}
@@ -136,6 +136,7 @@ func Run(ctx context.Context, cfg appConfig) error {
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.Recoverer)
+	router.Use(middleware.StripSlashes)
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins(cfg.FrontendURL),
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

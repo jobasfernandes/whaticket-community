@@ -33,6 +33,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Group(func(gr chi.Router) {
 		gr.Use(auth.IsAuth(h.AccessSecret))
 		gr.Get("/messages/{ticketId}", httpx.Wrap(h.list))
+		gr.Post("/messages/{ticketId}", httpx.Wrap(h.send))
 		gr.Delete("/messages/{messageId}", httpx.Wrap(h.delete))
 	})
 }
