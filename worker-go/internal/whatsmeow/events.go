@@ -193,7 +193,8 @@ func (h *EventHandler) publish(ctx context.Context, connID int, eventType string
 	if h.rmq == nil {
 		return
 	}
-	env, err := rmq.WrapPayload(eventType, connID, payload)
+	routingKey := fmt.Sprintf("wa.event.%d.%s", connID, eventType)
+	env, err := rmq.WrapPayload(routingKey, connID, payload)
 	if err != nil {
 		h.log.Error("wrap payload failed",
 			slog.Int("conn_id", connID),
@@ -202,7 +203,6 @@ func (h *EventHandler) publish(ctx context.Context, connID int, eventType string
 		)
 		return
 	}
-	routingKey := fmt.Sprintf("wa.event.%d.%s", connID, eventType)
 	if err := h.rmq.Publish(ctx, eventsExchange, routingKey, env); err != nil {
 		h.log.Error("publish event failed",
 			slog.Int("conn_id", connID),

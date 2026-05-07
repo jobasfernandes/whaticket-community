@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -10,8 +12,17 @@ import (
 )
 
 func openDB(dsn string) (*gorm.DB, error) {
+	gormLogger := logger.New(
+		log.New(os.Stderr, "", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		},
+	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger:      logger.Default.LogMode(logger.Warn),
+		Logger:      gormLogger,
 		PrepareStmt: true,
 	})
 	if err != nil {

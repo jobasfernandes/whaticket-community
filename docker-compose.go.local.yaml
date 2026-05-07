@@ -76,7 +76,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-jwt-refresh-secret-32-bytes!!}
       RABBITMQ_URL: amqp://whaticket:whaticket@rabbitmq:5672/
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      LOG_LEVEL: info
+      LOG_LEVEL: debug
       APP_ENV: development
       AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
       AUTO_SEED: ${AUTO_SEED:-true}
@@ -107,7 +107,7 @@ services:
       WORKER_PLATFORM_TYPE: DESKTOP
       WORKER_OS_NAME: whaticket-go-worker
       WORKER_HEALTH_PORT: "8081"
-      LOG_LEVEL: info
+      LOG_LEVEL: debug
       LOG_FORMAT: json
     volumes:
       - worker-data:/var/lib/worker-go

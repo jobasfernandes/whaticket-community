@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -34,6 +35,18 @@ const (
 func (c *Consumer) emitWhatsappSessionUpdate(ctx context.Context, whatsappID uint) error {
 	w, err := c.WhatsappSvc.Show(ctx, whatsappID)
 	if err != nil {
+		if isWhatsappNotFound(err) {
+			c.Log.Warn("waevents row gone; asking worker to cleanup",
+				slog.Uint64("whatsapp_id", uint64(whatsappID)),
+			)
+			if perr := c.WhatsappSvc.PublishLogout(ctx, whatsappID); perr != nil {
+				c.Log.Warn("waevents publish logout failed",
+					slog.Uint64("whatsapp_id", uint64(whatsappID)),
+					slog.Any("err", perr),
+				)
+			}
+			return nil
+		}
 		c.Log.Warn("waevents reload whatsapp failed",
 			slog.Uint64("whatsapp_id", uint64(whatsappID)),
 			slog.Any("err", err),
@@ -42,6 +55,13 @@ func (c *Consumer) emitWhatsappSessionUpdate(ctx context.Context, whatsappID uin
 	}
 	c.WS.Publish(wsNotificationChannel, wsWhatsappSessionUpdate, c.WhatsappSvc.SerializeForWS(w))
 	return nil
+}
+
+func isWhatsappNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "ERR_WAPP_NOT_FOUND")
 }
 
 func (c *Consumer) handleQRCode(ctx context.Context, whatsappID uint, payload []byte) error {

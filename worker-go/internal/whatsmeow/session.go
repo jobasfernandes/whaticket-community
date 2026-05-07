@@ -47,7 +47,7 @@ func (m *Manager) StartSession(ctx context.Context, cfg StartConfig, runtime Ses
 	}
 
 	m.handlerWG.Add(1)
-	go m.sessionGoroutine(ctx, cfg, runtime)
+	go m.sessionGoroutine(context.Background(), cfg, runtime)
 	return nil
 }
 
