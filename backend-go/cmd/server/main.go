@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 
 	"github.com/jobasfernandes/whaticket-go-backend/internal/auth"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/contact"
@@ -117,6 +118,14 @@ func Run(ctx context.Context, cfg appConfig) error {
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.Recoverer)
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   allowedOrigins(cfg.FrontendURL),
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 	router.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
