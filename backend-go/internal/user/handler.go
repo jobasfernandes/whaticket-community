@@ -35,7 +35,7 @@ func (h *Handler) Routes(r chi.Router, accessSecret []byte) {
 }
 
 func (h *Handler) MountSignup(r chi.Router) {
-	r.Post("/signup", httpx.Wrap(h.signup))
+	r.Post("/auth/signup", httpx.Wrap(h.signup))
 }
 
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) error {

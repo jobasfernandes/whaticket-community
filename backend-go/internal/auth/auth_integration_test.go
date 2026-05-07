@@ -38,9 +38,9 @@ func TestLoginHappyPath(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	body, _ := json.Marshal(map[string]string{"email": seeded.User.Email, "password": password})
-	resp, err := http.Post(srv.URL+"/login", "application/json", bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/auth/login", "application/json", bytes.NewReader(body))
 	if err != nil {
-		t.Fatalf("POST /login: %v", err)
+		t.Fatalf("POST /auth/login: %v", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -115,9 +115,9 @@ func TestLoginInvalidCredentials(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	body, _ := json.Marshal(map[string]string{"email": "admin@example.com", "password": "wrong-pass"})
-	resp, err := http.Post(srv.URL+"/login", "application/json", bytes.NewReader(body))
+	resp, err := http.Post(srv.URL+"/auth/login", "application/json", bytes.NewReader(body))
 	if err != nil {
-		t.Fatalf("POST /login: %v", err)
+		t.Fatalf("POST /auth/login: %v", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 

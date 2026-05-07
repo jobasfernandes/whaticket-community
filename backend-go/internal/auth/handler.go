@@ -19,9 +19,9 @@ type Deps struct {
 }
 
 func (d *Deps) Routes(r chi.Router) {
-	r.Post("/login", httpx.Wrap(d.handleLogin))
-	r.Post("/refresh_token", httpx.Wrap(d.handleRefresh))
-	r.With(IsAuth(d.AccessSecret)).Delete("/logout", httpx.Wrap(d.handleLogout))
+	r.Post("/auth/login", httpx.Wrap(d.handleLogin))
+	r.Post("/auth/refresh_token", httpx.Wrap(d.handleRefresh))
+	r.With(IsAuth(d.AccessSecret)).Delete("/auth/logout", httpx.Wrap(d.handleLogout))
 }
 
 type loginRequest struct {
