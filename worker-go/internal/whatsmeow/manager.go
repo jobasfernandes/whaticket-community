@@ -183,6 +183,18 @@ func (m *Manager) HandlerDone() {
 	m.handlerWG.Done()
 }
 
+func (m *Manager) UpdateSettings(id int, settings AdvancedSettings, mediaMode string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sess, ok := m.sessions[id]
+	if !ok {
+		return false
+	}
+	sess.Settings = settings
+	sess.MediaMode = mediaMode
+	return true
+}
+
 func (m *Manager) Shutdown(ctx context.Context) error {
 	m.mu.Lock()
 	if m.shuttingDown {

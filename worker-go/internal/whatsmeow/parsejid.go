@@ -6,6 +6,10 @@ import (
 	"go.mau.fi/whatsmeow/types"
 )
 
+func ParseJID(arg string) (types.JID, bool) {
+	return parseJID(arg)
+}
+
 func parseJID(arg string) (types.JID, bool) {
 	arg = strings.TrimSpace(arg)
 	if arg == "" {
