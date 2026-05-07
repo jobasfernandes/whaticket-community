@@ -24,13 +24,26 @@ type MessageEvent struct {
 }
 
 type MessageInfo struct {
-	ID       string `json:"ID"`
-	Sender   string `json:"Sender"`
-	Chat     string `json:"Chat"`
-	PushName string `json:"PushName"`
-	IsFromMe bool   `json:"IsFromMe"`
-	Type     string `json:"Type"`
+	ID             string `json:"ID"`
+	Sender         string `json:"Sender"`
+	Chat           string `json:"Chat"`
+	PushName       string `json:"PushName"`
+	IsFromMe       bool   `json:"IsFromMe"`
+	IsGroup        bool   `json:"IsGroup"`
+	Type           string `json:"Type"`
+	SenderAlt      string `json:"SenderAlt"`
+	RecipientAlt   string `json:"RecipientAlt"`
+	AddressingMode string `json:"AddressingMode"`
 }
+
+const (
+	jidSuffixUser       = "@s.whatsapp.net"
+	jidSuffixLID        = "@lid"
+	jidSuffixGroup      = "@g.us"
+	jidSuffixBroadcast  = "@broadcast"
+	jidSuffixNewsletter = "@newsletter"
+	jidStatusBroadcast  = "status@broadcast"
+)
 
 const (
 	messageMediaTypeChat      = "chat"
@@ -57,6 +70,15 @@ func (c *Consumer) handleMessage(ctx context.Context, whatsappID uint, payloadRa
 		return nil
 	}
 
+	if shouldDropChat(info) {
+		c.Log.Debug("waevents dropping non-1x1 chat",
+			slog.Uint64("whatsapp_id", uint64(whatsappID)),
+			slog.String("chat", info.Chat),
+			slog.String("message_id", info.ID),
+		)
+		return nil
+	}
+
 	body := extractBody(payload.Event.Message)
 	if startsWithLRM(body) {
 		c.Log.Debug("waevents dropping lrm-prefixed message",
@@ -74,8 +96,20 @@ func (c *Consumer) handleMessage(ctx context.Context, whatsappID uint, payloadRa
 		return nil
 	}
 
-	senderNumber := jidToNumber(info.Sender)
-	contact, err := c.ContactSvc.CreateOrUpdate(ctx, senderNumber, info.PushName, "", false)
+	contactJID, lidValue := resolveContactJID(info)
+	if contactJID == "" {
+		c.Log.Error("waevents could not resolve contact jid, dropping",
+			slog.Uint64("whatsapp_id", uint64(whatsappID)),
+			slog.String("message_id", info.ID),
+		)
+		return nil
+	}
+	contactNumber := jidToNumber(contactJID)
+	contactName := info.PushName
+	if info.IsFromMe {
+		contactName = ""
+	}
+	contact, err := c.ContactSvc.CreateOrUpdate(ctx, contactNumber, contactName, lidValue, false)
 	if err != nil {
 		c.Log.Warn("waevents contact upsert failed",
 			slog.Uint64("whatsapp_id", uint64(whatsappID)),
@@ -85,19 +119,6 @@ func (c *Consumer) handleMessage(ctx context.Context, whatsappID uint, payloadRa
 	}
 
 	var groupContact Contact
-	if isGroupChat(info.Chat) {
-		groupNumber := jidToNumber(info.Chat)
-		gc, gerr := c.ContactSvc.CreateOrUpdate(ctx, groupNumber, "", "", true)
-		if gerr != nil {
-			c.Log.Warn("waevents group contact upsert failed",
-				slog.Uint64("whatsapp_id", uint64(whatsappID)),
-				slog.String("group_jid", info.Chat),
-				slog.Any("err", gerr),
-			)
-			return gerr
-		}
-		groupContact = gc
-	}
 
 	whatsapp, err := c.WhatsappSvc.Show(ctx, whatsappID)
 	if err != nil {
@@ -234,6 +255,64 @@ func startsWithLRM(s string) bool {
 	return false
 }
 
+func shouldDropChat(info MessageInfo) bool {
+	chat := info.Chat
+	if info.IsGroup {
+		return true
+	}
+	if chat == "" {
+		return true
+	}
+	if chat == jidStatusBroadcast {
+		return true
+	}
+	if strings.HasSuffix(chat, jidSuffixGroup) {
+		return true
+	}
+	if strings.HasSuffix(chat, jidSuffixBroadcast) {
+		return true
+	}
+	if strings.HasSuffix(chat, jidSuffixNewsletter) {
+		return true
+	}
+	if strings.HasSuffix(chat, jidSuffixUser) || strings.HasSuffix(chat, jidSuffixLID) {
+		return false
+	}
+	return true
+}
+
+func resolveContactJID(info MessageInfo) (jid string, lid string) {
+	primary := info.Chat
+	if !info.IsFromMe && info.Sender != "" {
+		primary = info.Sender
+	}
+	if info.IsFromMe && info.Chat != "" {
+		primary = info.Chat
+	}
+	alt := ""
+	if info.IsFromMe {
+		alt = info.RecipientAlt
+	} else {
+		alt = info.SenderAlt
+	}
+	if strings.HasSuffix(primary, jidSuffixLID) {
+		if strings.HasSuffix(alt, jidSuffixUser) {
+			return alt, primary
+		}
+		return primary, primary
+	}
+	if strings.HasSuffix(primary, jidSuffixUser) {
+		if strings.HasSuffix(alt, jidSuffixLID) {
+			return primary, alt
+		}
+		return primary, ""
+	}
+	if strings.HasSuffix(alt, jidSuffixUser) {
+		return alt, primary
+	}
+	return primary, ""
+}
+
 func jidToNumber(jid string) string {
 	at := strings.IndexByte(jid, '@')
 	if at <= 0 {
@@ -244,10 +323,6 @@ func jidToNumber(jid string) string {
 		number = number[:colon]
 	}
 	return number
-}
-
-func isGroupChat(chat string) bool {
-	return strings.HasSuffix(chat, groupSuffix)
 }
 
 func shouldSkipFarewellEcho(w Whatsapp, contact Contact, info MessageInfo, body string) bool {
