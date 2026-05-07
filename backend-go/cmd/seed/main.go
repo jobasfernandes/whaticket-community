@@ -2,17 +2,14 @@ package main
 
 import (
 	"context"
-	stdErrors "errors"
 	"flag"
 	"log/slog"
-	"net/http"
 	"os"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/jobasfernandes/whaticket-go-backend/internal/setting"
-	"github.com/jobasfernandes/whaticket-go-backend/internal/user"
+	"github.com/jobasfernandes/whaticket-go-backend/internal/dbseed"
 )
 
 func main() {
@@ -35,59 +32,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := context.Background()
-
-	if err := ensureAdmin(ctx, db, *email, *name, *password, logger); err != nil {
-		logger.Error("seed admin failed", "err", err)
-		os.Exit(1)
-	}
-	if err := ensureSettings(ctx, db, logger); err != nil {
-		logger.Error("seed settings failed", "err", err)
+	if _, err := dbseed.Run(context.Background(), db, dbseed.Options{
+		AdminEmail:    *email,
+		AdminName:     *name,
+		AdminPassword: *password,
+	}, logger); err != nil {
+		logger.Error("seed failed", "err", err)
 		os.Exit(1)
 	}
 	logger.Info("seed complete")
-}
-
-func ensureAdmin(ctx context.Context, db *gorm.DB, email, name, password string, logger *slog.Logger) error {
-	var existing user.User
-	err := db.WithContext(ctx).Where("email = ?", email).First(&existing).Error
-	if err == nil {
-		logger.Info("admin already exists; skipping", "email", email, "id", existing.ID)
-		return nil
-	}
-	if !stdErrors.Is(err, gorm.ErrRecordNotFound) {
-		return err
-	}
-	admin := user.User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-		Profile:  "admin",
-	}
-	if err := db.WithContext(ctx).Create(&admin).Error; err != nil {
-		return err
-	}
-	logger.Info("admin created", "email", email, "id", admin.ID)
-	return nil
-}
-
-func ensureSettings(ctx context.Context, db *gorm.DB, logger *slog.Logger) error {
-	deps := &setting.Deps{DB: db}
-	if err := upsertSetting(ctx, deps, "userCreation", "enabled"); err != nil {
-		return err
-	}
-	logger.Info("settings ensured")
-	return nil
-}
-
-func upsertSetting(ctx context.Context, deps *setting.Deps, key, value string) error {
-	if _, err := deps.Update(ctx, key, value); err != nil {
-		if err.Status >= http.StatusInternalServerError {
-			return err
-		}
-		return nil
-	}
-	return nil
 }
 
 func firstNonEmpty(values ...string) string {

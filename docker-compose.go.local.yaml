@@ -60,38 +60,13 @@ services:
       mc anonymous set download local/whaticket-media || true
       "
 
-  migrate:
+  backend:
     build:
       context: ./backend-go
     image: whaticket-go-backend:local
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://whaticket:whaticket@postgres:5432/whaticket?sslmode=disable
-    entrypoint: ["/app/migrate"]
-    command: ["up"]
-    restart: "no"
-
-  seed:
-    profiles: ["seed"]
-    image: whaticket-go-backend:local
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    environment:
-      DATABASE_URL: postgres://whaticket:whaticket@postgres:5432/whaticket?sslmode=disable
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@whaticket.com}
-      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin}
-    entrypoint: ["/app/seed"]
-    restart: "no"
-
-  backend:
-    image: whaticket-go-backend:local
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
     environment:
@@ -103,6 +78,11 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       LOG_LEVEL: info
       APP_ENV: development
+      AUTO_MIGRATE: ${AUTO_MIGRATE:-true}
+      AUTO_SEED: ${AUTO_SEED:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@whaticket.com}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin}
     ports:
       - "8080:8080"
 

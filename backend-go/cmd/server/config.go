@@ -14,6 +14,11 @@ type appConfig struct {
 	AccessSecret  string
 	RefreshSecret string
 	LogLevel      string
+	AutoMigrate   bool
+	AutoSeed      bool
+	SeedEmail     string
+	SeedName      string
+	SeedPassword  string
 }
 
 func loadConfig() (appConfig, error) {
@@ -25,6 +30,11 @@ func loadConfig() (appConfig, error) {
 		AccessSecret:  os.Getenv("JWT_SECRET"),
 		RefreshSecret: os.Getenv("JWT_REFRESH_SECRET"),
 		LogLevel:      envOrDefault("LOG_LEVEL", "info"),
+		AutoMigrate:   envBool("AUTO_MIGRATE", false),
+		AutoSeed:      envBool("AUTO_SEED", false),
+		SeedEmail:     envOrDefault("SEED_ADMIN_EMAIL", "admin@whaticket.com"),
+		SeedName:      envOrDefault("SEED_ADMIN_NAME", "Admin"),
+		SeedPassword:  envOrDefault("SEED_ADMIN_PASSWORD", "admin"),
 	}
 	if cfg.DatabaseDSN == "" {
 		return cfg, fmt.Errorf("DATABASE_URL or POSTGRES_DSN is required")
@@ -44,6 +54,18 @@ func envOrDefault(key, fallback string) string {
 		return fallback
 	}
 	return v
+}
+
+func envBool(key string, fallback bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	switch v {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
 }
 
 func firstNonEmpty(values ...string) string {

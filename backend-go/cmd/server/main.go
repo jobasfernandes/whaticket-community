@@ -16,6 +16,8 @@ import (
 
 	"github.com/jobasfernandes/whaticket-go-backend/internal/auth"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/contact"
+	"github.com/jobasfernandes/whaticket-go-backend/internal/dbmigrate"
+	"github.com/jobasfernandes/whaticket-go-backend/internal/dbseed"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/message"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/queue"
 	"github.com/jobasfernandes/whaticket-go-backend/internal/quickanswer"
@@ -49,9 +51,25 @@ func Run(ctx context.Context, cfg appConfig) error {
 	logger := newLogger(cfg.LogLevel)
 	slog.SetDefault(logger)
 
+	if cfg.AutoMigrate {
+		if _, err := dbmigrate.Up(ctx, cfg.DatabaseDSN, logger); err != nil {
+			return err
+		}
+	}
+
 	db, err := openDB(cfg.DatabaseDSN)
 	if err != nil {
 		return err
+	}
+
+	if cfg.AutoSeed {
+		if _, err := dbseed.Run(ctx, db, dbseed.Options{
+			AdminEmail:    cfg.SeedEmail,
+			AdminName:     cfg.SeedName,
+			AdminPassword: cfg.SeedPassword,
+		}, logger); err != nil {
+			return err
+		}
 	}
 
 	rmqClient := rmq.New(rmq.Config{URL: cfg.RMQURL, Logger: logger})
