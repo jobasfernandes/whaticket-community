@@ -192,6 +192,7 @@ const TicketListItem = ({ ticket }) => {
 							</Typography>
 							{ticket.status === "closed" && (
 								<Badge
+									overlap="rectangular"
 									className={classes.closedBadge}
 									badgeContent={"closed"}
 									color="primary"
@@ -233,6 +234,7 @@ const TicketListItem = ({ ticket }) => {
 							</Typography>
 
 							<Badge
+								overlap="rectangular"
 								className={classes.newMessagesCount}
 								badgeContent={ticket.unreadMessages}
 								classes={{

@@ -36,19 +36,27 @@ import { AuthContext } from "../../context/Auth/AuthContext";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import toastError from "../../errors/toastError";
 
-let Mp3Recorder = null;
+const RECORDER_PREFERRED_MIME_TYPES = [
+  "audio/ogg;codecs=opus",
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+];
 
-const initRecorder = async () => {
-  if (!Mp3Recorder) {
-    try {
-      const MicRecorder = (await import("mic-recorder-to-mp3")).default;
-      Mp3Recorder = new MicRecorder({ bitRate: 128 });
-    } catch (error) {
-      console.error("Failed to initialize recorder:", error);
-      return null;
-    }
+const pickRecorderMimeType = () => {
+  if (typeof MediaRecorder === "undefined") return "";
+  for (const mime of RECORDER_PREFERRED_MIME_TYPES) {
+    if (MediaRecorder.isTypeSupported(mime)) return mime;
   }
-  return Mp3Recorder;
+  return "";
+};
+
+const recorderFileExtension = mimeType => {
+  if (!mimeType) return "ogg";
+  if (mimeType.includes("ogg")) return "ogg";
+  if (mimeType.includes("webm")) return "webm";
+  if (mimeType.includes("mp4")) return "m4a";
+  return "ogg";
 };
 
 const useStyles = makeStyles(theme => ({
@@ -225,6 +233,10 @@ const MessageInput = ({ ticketStatus }) => {
   const [quickAnswers, setQuickAnswer] = useState([]);
   const [typeBar, setTypeBar] = useState(false);
   const inputRef = useRef();
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const recorderStreamRef = useRef(null);
+  const recorderMimeRef = useRef("");
   const [anchorEl, setAnchorEl] = useState(null);
   const { setReplyingMessage, replyingMessage } =
     useContext(ReplyMessageContext);
@@ -325,15 +337,27 @@ const MessageInput = ({ ticketStatus }) => {
   const handleStartRecording = async () => {
     setLoading(true);
     try {
-      const recorder = await initRecorder();
-      if (!recorder) {
-        throw new Error("Recorder not available");
+      if (typeof MediaRecorder === "undefined") {
+        throw new Error("MediaRecorder API not available in this browser");
       }
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      await recorder.start();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickRecorderMimeType();
+      const options = mimeType ? { mimeType } : undefined;
+      const recorder = new MediaRecorder(stream, options);
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = event => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      recorderStreamRef.current = stream;
+      recorderMimeRef.current = mimeType || recorder.mimeType || "audio/webm";
       setRecording(true);
       setLoading(false);
     } catch (err) {
+      stopRecorderTracks();
       toastError(err);
       setLoading(false);
     }
@@ -362,19 +386,21 @@ const MessageInput = ({ ticketStatus }) => {
   const handleUploadAudio = async () => {
     setLoading(true);
     try {
-      const recorder = await initRecorder();
-      if (!recorder) {
-        throw new Error("Recorder not available");
+      const blob = await stopRecorderAndGetBlob();
+      if (!blob) {
+        setLoading(false);
+        setRecording(false);
+        return;
       }
-      const [, blob] = await recorder.stop().getMp3();
-      if (blob.size < 10000) {
+      if (blob.size < 1024) {
         setLoading(false);
         setRecording(false);
         return;
       }
 
+      const mimeType = recorderMimeRef.current || blob.type || "audio/webm";
       const formData = new FormData();
-      const filename = `${new Date().getTime()}.mp3`;
+      const filename = `${new Date().getTime()}.${recorderFileExtension(mimeType)}`;
       formData.append("medias", blob, filename);
       formData.append("body", filename);
       formData.append("fromMe", true);
@@ -390,14 +416,54 @@ const MessageInput = ({ ticketStatus }) => {
 
   const handleCancelAudio = async () => {
     try {
-      const recorder = await initRecorder();
-      if (recorder) {
-        await recorder.stop().getMp3();
-      }
-      setRecording(false);
+      await stopRecorderAndGetBlob();
     } catch (err) {
       toastError(err);
     }
+    setRecording(false);
+  };
+
+  const stopRecorderAndGetBlob = () =>
+    new Promise(resolve => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder) {
+        stopRecorderTracks();
+        resolve(null);
+        return;
+      }
+      const finalize = () => {
+        const chunks = recordedChunksRef.current;
+        recordedChunksRef.current = [];
+        const mimeType = recorderMimeRef.current || recorder.mimeType || "audio/webm";
+        const blob = chunks.length ? new Blob(chunks, { type: mimeType }) : null;
+        mediaRecorderRef.current = null;
+        stopRecorderTracks();
+        resolve(blob);
+      };
+      if (recorder.state === "inactive") {
+        finalize();
+        return;
+      }
+      recorder.onstop = finalize;
+      try {
+        recorder.stop();
+      } catch (_) {
+        finalize();
+      }
+    });
+
+  const stopRecorderTracks = () => {
+    const stream = recorderStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch (_) {
+          // ignore
+        }
+      });
+    }
+    recorderStreamRef.current = null;
   };
 
   const handleOpenMenuClick = event => {

@@ -184,20 +184,30 @@ const reducer = (state, action) => {
 	useEffect(() => {
 		const socket = openSocket();
 
+		const matchesTabStatus = ticket =>
+			!status || ticket.status === status;
+
 		const shouldUpdateTicket = ticket => !searchParam &&
+			matchesTabStatus(ticket) &&
 			(!ticket.userId || ticket.userId === user?.id || showAll) &&
 			(!ticket.queueId || selectedQueueIds.indexOf(ticket.queueId) > -1);
 
 		const notBelongsToUserQueues = ticket =>
 			ticket.queueId && selectedQueueIds.indexOf(ticket.queueId) === -1;
 
-		socket.on("connect", () => {
+		const leftThisTab = ticket =>
+			status && ticket.status !== status;
+
+		const join = () => {
 			if (status) {
 				socket.emit("joinTickets", status);
 			} else {
 				socket.emit("joinNotification");
 			}
-		});
+		};
+
+		join();
+		socket.on("connect", join);
 
 		socket.on("ticket", data => {
 			if (data.action === "updateUnread") {
@@ -214,7 +224,7 @@ const reducer = (state, action) => {
 				});
 			}
 
-			if (data.action === "update" && notBelongsToUserQueues(data.ticket)) {
+			if (data.action === "update" && (notBelongsToUserQueues(data.ticket) || leftThisTab(data.ticket))) {
 				dispatch({ type: "DELETE_TICKET", payload: data.ticket.id });
 			}
 

@@ -82,6 +82,7 @@ const NotificationsPopOver = () => {
 	useEffect(() => {
 		const socket = openSocket();
 
+		socket.emit("joinNotification");
 		socket.on("connect", () => socket.emit("joinNotification"));
 
 		socket.on("ticket", data => {
@@ -196,7 +197,7 @@ const NotificationsPopOver = () => {
 				aria-label="Open Notifications"
 				className={classes.iconButton}
 			>
-				<Badge badgeContent={notifications.length} color="secondary">
+				<Badge overlap="rectangular" badgeContent={notifications.length} color="secondary">
 					<ChatIcon />
 				</Badge>
 			</IconButton>

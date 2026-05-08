@@ -1,0 +1,103 @@
+name: Update whatsmeow
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: update-whatsmeow
+  cancel-in-progress: true
+
+jobs:
+  check-and-update:
+    name: Check and update whatsmeow in worker/
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: worker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: worker/go.mod
+          cache: true
+          cache-dependency-path: worker/go.sum
+
+      - name: Check current version
+        id: current
+        run: |
+          CURRENT=$(go list -m go.mau.fi/whatsmeow | awk '{print $2}')
+          echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: Check latest version
+        id: latest
+        run: |
+          LATEST=$(go list -m -u go.mau.fi/whatsmeow | awk '{if (NF==3) print $3; else print $2}')
+          echo "version=$LATEST" >> "$GITHUB_OUTPUT"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ "${{ steps.current.outputs.version }}" != "${{ steps.latest.outputs.version }}" ]; then
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update whatsmeow
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          go get -u go.mau.fi/whatsmeow@latest
+          go mod tidy
+
+      - name: Run tests
+        id: tests
+        if: steps.compare.outputs.needs_update == 'true'
+        continue-on-error: true
+        run: go test ./...
+
+      - name: Create Pull Request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: develop
+          commit-message: "chore(deps): update whatsmeow to ${{ steps.latest.outputs.version }}"
+          branch: chore/update-whatsmeow
+          delete-branch: true
+          title: "chore(deps): update whatsmeow to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated update of `go.mau.fi/whatsmeow` in `worker/`.
+
+            - Previous: `${{ steps.current.outputs.version }}`
+            - New: `${{ steps.latest.outputs.version }}`
+            - Test result: `${{ steps.tests.outcome }}`
+
+            Review the [whatsmeow changelog](https://github.com/tulir/whatsmeow/commits/main)
+            for breaking changes before merging.
+          labels: |
+            dependencies
+            automated
+            whatsmeow
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Update summary"
+            echo ""
+            echo "- Current: \`${{ steps.current.outputs.version }}\`"
+            echo "- Latest:  \`${{ steps.latest.outputs.version }}\`"
+            echo "- Update needed: \`${{ steps.compare.outputs.needs_update }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

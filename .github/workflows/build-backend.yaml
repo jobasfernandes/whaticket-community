@@ -1,36 +1,43 @@
-name: Test build backend
+name: Build backend
 
 on:
   pull_request:
     paths:
       - "backend/**"
-
+      - ".github/workflows/build-backend.yaml"
   push:
-    branches:
-      - master
+    branches: [develop]
     paths:
       - "backend/**"
+      - ".github/workflows/build-backend.yaml"
+
+concurrency:
+  group: build-backend-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: go build + vet
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [14.x]
-
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
 
-      - name: Install dependencies
-        working-directory: backend
-        run: npm install
+      - name: go vet
+        run: go vet ./...
 
-      - run: npm run build
-        working-directory: backend
+      - name: go build
+        run: |
+          go build -trimpath ./cmd/server
+          go build -trimpath ./cmd/migrate
+          go build -trimpath ./cmd/seed

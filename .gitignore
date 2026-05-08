@@ -1,6 +1,28 @@
-.docker/data/
-ssl/
+# Environment
 .env
-.wwebjs_auth
-.wwebjs_cache
-.idea
+.env.*
+!.env.example
+
+# Go binaries
+*.exe
+*.exe~
+*.test
+*.out
+**/bin/
+
+# Worker local sqlstore
+worker-data/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

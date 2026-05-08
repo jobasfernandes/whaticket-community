@@ -106,6 +106,7 @@ const Ticket = () => {
   useEffect(() => {
     const socket = openSocket();
 
+    socket.emit("joinChatBox", ticketId);
     socket.on("connect", () => socket.emit("joinChatBox", ticketId));
 
     socket.on("ticket", (data) => {
@@ -131,6 +132,7 @@ const Ticket = () => {
     });
 
     return () => {
+      socket.emit("leaveChatBox", ticketId);
       socket.disconnect();
     };
   }, [ticketId, history]);
