@@ -1,0 +1,86 @@
+{
+  "enabledPlugins": {
+    "andrej-karpathy-skills@karpathy-skills": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(go test:*)",
+      "Bash(go build:*)",
+      "Bash(go run:*)",
+      "Bash(go vet:*)",
+      "Bash(go fmt:*)",
+      "Bash(go mod:*)",
+      "Bash(go list:*)",
+      "Bash(go env:*)",
+      "Bash(go tool:*)",
+      "Bash(go version:*)",
+      "Bash(gofmt:*)",
+      "Bash(golangci-lint:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker compose build:*)",
+      "Bash(docker compose up:*)",
+      "Bash(docker compose down:*)",
+      "Bash(docker compose exec:*)",
+      "Bash(docker compose restart:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker images:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run preview:*)",
+      "Bash(npm start:*)",
+      "Bash(npx vite:*)",
+      "Bash(npx eslint:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git stash list:*)",
+      "PowerShell(go test:*)",
+      "PowerShell(go build:*)",
+      "PowerShell(go run:*)",
+      "PowerShell(go vet:*)",
+      "PowerShell(go mod:*)",
+      "PowerShell(go list:*)",
+      "PowerShell(go env:*)",
+      "PowerShell(gofmt:*)",
+      "PowerShell(golangci-lint:*)",
+      "PowerShell(docker compose ps:*)",
+      "PowerShell(docker compose logs:*)",
+      "PowerShell(docker compose build:*)",
+      "PowerShell(docker compose up:*)",
+      "PowerShell(docker compose down:*)",
+      "PowerShell(docker compose exec:*)",
+      "PowerShell(docker compose restart:*)",
+      "PowerShell(npm run dev:*)",
+      "PowerShell(npm run build:*)",
+      "PowerShell(npm start:*)",
+      "PowerShell(npx vite:*)",
+      "PowerShell(npx eslint:*)",
+      "PowerShell(git status:*)",
+      "PowerShell(git diff:*)",
+      "PowerShell(git log:*)",
+      "PowerShell(git branch:*)",
+      "PowerShell(git show:*)",
+      "PowerShell(git rev-parse:*)",
+      "PowerShell(Get-ChildItem:*)",
+      "PowerShell(Get-Content:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/gofmt-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
